@@ -75,6 +75,10 @@ function cloneItem(it) {
   return { id: it.id, canvas: c, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh };
 }
 
+function cloneAllItems() {
+  return objects.items.map(cloneItem);
+}
+
 function doObjUndo() {
   const act = objHistory.undo.pop();
   if (!act) return;
@@ -84,6 +88,13 @@ function doObjUndo() {
   } else if (act.type === 'modify') {
     objects.setFromData(act.id, act.before);
     objHistory.redo.push({ type: 'modify', id: act.id, before: act.before, after: act.after });
+  } else if (act.type === 'replace') {
+    // Replace entire collection
+    objects.items = [];
+    objects.selectedId = null;
+    objects.nextId = 1;
+    for (const data of act.before) objects.addFromData(data);
+    objHistory.redo.push({ type: 'replace', before: act.before, after: act.after });
   }
 }
 
@@ -96,6 +107,12 @@ function doObjRedo() {
   } else if (act.type === 'modify') {
     objects.setFromData(act.id, act.after);
     objHistory.undo.push({ type: 'modify', id: act.id, before: act.before, after: act.after });
+  } else if (act.type === 'replace') {
+    objects.items = [];
+    objects.selectedId = null;
+    objects.nextId = 1;
+    for (const data of act.after) objects.addFromData(data);
+    objHistory.undo.push({ type: 'replace', before: act.before, after: act.after });
   }
 }
 
@@ -118,6 +135,7 @@ function render() {
   ctx.restore();
   crop.draw(ctx, viewport, canvas);
   objects.drawSelection(ctx, viewport);
+  updateStatus();
 }
 
 function snapshot() {
@@ -182,6 +200,7 @@ function setCanvasSize(w, h, preserve = true) {
     render();
   }
   snapshot();
+  updateStatus();
 }
 
 function clampInt(n, min, max) {
@@ -436,9 +455,21 @@ canvas.addEventListener('pointerup', endStroke);
 canvas.addEventListener('pointercancel', endStroke);
 
 clearCanvas.addEventListener('click', () => {
+  // Capture state for undo (objects + background)
+  const beforeObjects = cloneAllItems();
+  // Clear background and remove all objects
   dctx.clearRect(0, 0, doc.width, doc.height);
+  objects.items = [];
+  objects.selectedId = null;
+  objects.nextId = 1;
+  // Record replace action for object history and clear redo stack
+  objHistory.undo.push({ type: 'replace', before: beforeObjects, after: [] });
+  objHistory.redo.length = 0;
+  // Push raster snapshot too so background can undo
   render();
   snapshot();
+  persist();
+  updateUndoRedoState();
 });
 
 // Zoom controls
@@ -575,6 +606,7 @@ applyCurvesBtn.addEventListener('click', () => {
     snapshot();
   }
   updateZoomLabel();
+  updateStatus();
 })();
 
 // Settings
@@ -603,3 +635,10 @@ if (exportBtn) exportBtn.addEventListener('click', () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }, 'image/png');
 });
+
+function updateStatus() {
+  if (!statusBar) return;
+  const dim = `${canvas.width}×${canvas.height}`;
+  const zoom = `${Math.round(viewport.scale * 100)}%`;
+  statusBar.textContent = `${dim}  •  Zoom ${zoom}`;
+}

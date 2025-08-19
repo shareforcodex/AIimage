@@ -65,6 +65,17 @@ body {
 }
 canvas { display: block; width: min(95vw, 1024px); height: auto; touch-action: none; }
 
+.status-bar {
+  position: fixed; right: 12px; bottom: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  pointer-events: none;
+}
+
 @media (min-width: 900px) {
   .input.range { width: 140px; }
   canvas { width: min(90vw, 1280px); }
