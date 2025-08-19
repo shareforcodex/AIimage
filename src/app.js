@@ -107,6 +107,15 @@ function render() {
   ctx.drawImage(doc, 0, 0);
   objects.draw(ctx);
   ctx.restore();
+  // Draw document boundary
+  ctx.save();
+  viewport.apply(ctx);
+  ctx.strokeStyle = '#5a5a5a';
+  ctx.lineWidth = 1 / viewport.scale;
+  ctx.setLineDash([4 / viewport.scale, 4 / viewport.scale]);
+  ctx.strokeRect(0.5 / viewport.scale, 0.5 / viewport.scale, doc.width - 1 / viewport.scale, doc.height - 1 / viewport.scale);
+  ctx.setLineDash([]);
+  ctx.restore();
   crop.draw(ctx, viewport, canvas);
   objects.drawSelection(ctx, viewport);
 }
@@ -468,14 +477,10 @@ canvas.addEventListener('pointermove', (e) => {
     const [a, b] = [...touches.values()];
     const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     const dist = Math.hypot(a.x - b.x, a.y - b.y);
-    if (!pinchStart) pinchStart = { dist, scale: viewport.scale, mid, tx: viewport.tx, ty: viewport.ty };
-    const factor = dist / (pinchStart.dist || dist);
-    const nextScale = Math.max(viewport.minScale, Math.min(viewport.maxScale, pinchStart.scale * factor));
-    // adjust tx/ty to keep midpoint stable
-    const k = nextScale / (viewport.scale || nextScale);
-    viewport.scale = nextScale;
-    viewport.tx = mid.x - k * (mid.x - pinchStart.tx);
-    viewport.ty = mid.y - k * (mid.y - pinchStart.ty);
+    if (!pinchStart) pinchStart = { lastDist: dist };
+    const factor = dist / (pinchStart.lastDist || dist);
+    pinchStart.lastDist = dist;
+    viewport.zoomAt(factor, mid.x, mid.y);
     updateZoomLabel();
     render();
   }
@@ -583,7 +588,8 @@ if (keepAspect) {
 // Export composite (doc + objects) as PNG
 if (exportBtn) exportBtn.addEventListener('click', () => {
   const tmp = document.createElement('canvas');
-  tmp.width = doc.width; tmp.height = doc.height;
+  // Export exactly the document boundary size (same as canvas intrinsic size)
+  tmp.width = canvas.width; tmp.height = canvas.height;
   const tctx = tmp.getContext('2d');
   tctx.clearRect(0, 0, tmp.width, tmp.height);
   tctx.drawImage(doc, 0, 0);
