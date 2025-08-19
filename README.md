@@ -20,3 +20,5 @@ add new button in file dropdown , to export the image
 when click image to resize, if user use corner point to resize, keep resize and ratio, if it use middle point , then crop the image, just remove the part that out of the boundary
 
 when export the image, it alway export 1024x1536, fix it to canvas size
+
+clear canvas not works, also show current canvas status like size at right botton of window
