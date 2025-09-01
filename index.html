@@ -48,6 +48,32 @@
         </details>
 
         <details class="menu">
+          <summary>Text</summary>
+          <div class="menu-panel horizontal">
+            <input id="textContent" class="input menu-text-input" type="text" placeholder="Enter text" />
+            <input id="textColor" class="input color" type="color" value="#ffffff" />
+            <input id="textSize" class="input number" type="number" min="6" max="512" step="1" value="48" />
+            <label class="menu-item menu-check">
+              <input id="textBold" type="checkbox" /> Bold
+            </label>
+            <select id="textFont" class="input">
+              <option value="Arial">Arial</option>
+              <option value="Helvetica">Helvetica</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Courier New">Courier New</option>
+              <option value="Menlo">Menlo</option>
+              <option value="Monaco">Monaco</option>
+              <option value="system-ui">System UI</option>
+              <option value="sans-serif">Sans-Serif</option>
+              <option value="serif">Serif</option>
+              <option value="monospace">Monospace</option>
+            </select>
+            <button id="addTextBtn" class="btn small">Add Text</button>
+          </div>
+        </details>
+
+        <details class="menu">
           <summary>Image</summary>
           <div class="menu-panel">
             <div class="menu-row">

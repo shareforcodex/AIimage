@@ -52,6 +52,14 @@ const applyCurvesBtn = document.getElementById('applyCurves');
 const exportBtn = document.getElementById('exportBtn');
 const keepAspect = document.getElementById('keepAspect');
 
+// Text tools
+const textContent = document.getElementById('textContent');
+const textColor = document.getElementById('textColor');
+const textSize = document.getElementById('textSize');
+const textBold = document.getElementById('textBold');
+const textFont = document.getElementById('textFont');
+const addTextBtn = document.getElementById('addTextBtn');
+
 const history = new History(50);
 let isDrawing = false;
 let lastPoint = null;
@@ -645,13 +653,6 @@ for (const m of menus) {
       for (const other of menus) if (other !== m && other.open) other.open = false;
     }
   });
-  // For horizontal, quick-action menus, close after click
-  const panel = m.querySelector('.menu-panel.horizontal');
-  if (panel) {
-    panel.querySelectorAll('.menu-item').forEach((el) => {
-      el.addEventListener('click', () => { m.open = false; }, { capture: true });
-    });
-  }
 }
 
 // Settings
@@ -686,4 +687,50 @@ function updateStatus() {
   const dim = `${canvas.width}×${canvas.height}`;
   const zoom = `${Math.round(viewport.scale * 100)}%`;
   statusBar.textContent = `${dim}  •  Zoom ${zoom}`;
+}
+
+// Text: create canvas for text and add as object
+function createTextCanvas(text, { size = 48, color = '#ffffff', bold = false, font = 'Arial' } = {}) {
+  const pad = Math.ceil(size * 0.25);
+  const tmp = document.createElement('canvas');
+  const tctx = tmp.getContext('2d');
+  const fontStr = `${bold ? 'bold ' : ''}${size}px ${font}`;
+  tctx.font = fontStr;
+  tctx.textBaseline = 'alphabetic';
+  const metrics = tctx.measureText(text || '');
+  const ascent = Math.max(metrics.actualBoundingBoxAscent || size * 0.8, 1);
+  const descent = Math.max(metrics.actualBoundingBoxDescent || size * 0.2, 0);
+  const w = Math.ceil((metrics.width || 1) + pad * 2);
+  const h = Math.ceil(ascent + descent + pad * 2);
+  tmp.width = Math.max(1, w);
+  tmp.height = Math.max(1, h);
+  const ctx2 = tmp.getContext('2d');
+  ctx2.font = fontStr;
+  ctx2.fillStyle = color;
+  ctx2.textBaseline = 'alphabetic';
+  ctx2.fillText(text || '', pad, pad + ascent);
+  return tmp;
+}
+
+if (addTextBtn) {
+  addTextBtn.addEventListener('click', () => {
+    const txt = (textContent && textContent.value) || 'Text';
+    const size = Math.max(6, Math.min(512, Number(textSize && textSize.value) || 48));
+    const color = (textColor && textColor.value) || '#ffffff';
+    const bold = !!(textBold && textBold.checked);
+    const font = (textFont && textFont.value) || 'Arial';
+    const c = createTextCanvas(txt, { size, color, bold, font });
+    // Place at current viewport top-left for visibility
+    const tl = viewport.canvasToImage({ x: 20, y: 20 });
+    const id = objects.addImageBitmap(c, { x: Math.round(tl.x), y: Math.round(tl.y) });
+    objects.selectedId = id;
+    // record add action
+    const it = objects.getById(id);
+    if (it) {
+      objHistory.undo.push({ type: 'add', item: cloneItem(it) });
+      objHistory.redo.length = 0; updateUndoRedoState();
+    }
+    render();
+    persist();
+  });
 }

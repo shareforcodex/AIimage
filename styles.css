@@ -129,6 +129,8 @@ body {
 }
 
 .workspace {
+  position: fixed;
+  top: 100px;
   display: grid;
   place-items: center;
   padding: 12px;
@@ -235,7 +237,7 @@ canvas {
   gap: 8px;
   min-width: unset;
   max-width: min(95vw, 1000px);
-  white-space: nowrap;
+  white-space: wrap;
   padding: 8px 10px;
 }
 
@@ -306,3 +308,7 @@ canvas {
 .btn.small {
   padding: 4px 8px;
 }
+
+/* Text menu helpers */
+.menu-text-input { min-width: 180px; }
+.menu-check { padding: 0 6px; }
