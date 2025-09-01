@@ -59,12 +59,14 @@ const textSize = document.getElementById('textSize');
 const textBold = document.getElementById('textBold');
 const textFont = document.getElementById('textFont');
 const addTextBtn = document.getElementById('addTextBtn');
+const drawMode = document.getElementById('drawMode');
 
 const history = new History(50);
 let isDrawing = false;
 let lastPoint = null;
 let isPanning = false;
 let spaceKey = false;
+let drawTarget = null; // null | { type:'doc' } | { type:'object', id:number, before:any }
 
 const viewport = new Viewport();
 const crop = new CropMarquee();
@@ -387,8 +389,23 @@ function flip(horizontal, vertical) {
 brushToggle.addEventListener('click', () => {
   const active = brushToggle.getAttribute('aria-pressed') === 'true';
   brushToggle.setAttribute('aria-pressed', String(!active));
-  if (!active) { if (cropToggle) cropToggle.setAttribute('aria-pressed', 'false'); crop.active = false; render(); }
+  if (!active) {
+    if (cropToggle) cropToggle.setAttribute('aria-pressed', 'false');
+    crop.active = false;
+    // Turning Brush on should disable Add/Draw mode to avoid conflicts
+    if (drawMode) drawMode.checked = false;
+    render();
+  }
 });
+
+// Draw Mode toggle in Add menu: disable Brush when enabled
+if (drawMode) {
+  drawMode.addEventListener('change', () => {
+    if (drawMode.checked) {
+      brushToggle.setAttribute('aria-pressed', 'false');
+    }
+  });
+}
 
 function getCanvasPoint(e) {
   const rect = canvas.getBoundingClientRect();
@@ -402,8 +419,43 @@ function getImagePoint(e) {
 }
 
 function drawLine(a, b) {
-  dctx.strokeStyle = brushColor.value;
-  dctx.lineWidth = Number(brushSize.value);
+  const useText = !!(drawMode && drawMode.checked);
+  const color = useText ? (textColor && textColor.value) || '#ffffff' : brushColor.value;
+  const width = useText ? Math.max(1, Number((textSize && textSize.value) || 1)) : Number(brushSize.value);
+
+  // If drawing on an object, map points into object canvas space and draw there.
+  if (drawTarget && drawTarget.type === 'object') {
+    const it = objects.getById(drawTarget.id);
+    if (!it) return;
+    const ctx2 = it.canvas.getContext('2d');
+    // Map image-space point -> object canvas pixel
+    const mapPt = (p) => {
+      const tx = (p.x - it.x) / it.w;
+      const ty = (p.y - it.y) / it.h;
+      const sx = it.sx + tx * it.sw;
+      const sy = it.sy + ty * it.sh;
+      return { x: sx, y: sy };
+    };
+    const p1 = mapPt(a);
+    const p2 = mapPt(b);
+    const scaleX = it.sw / Math.max(1, it.w);
+    const scaleY = it.sh / Math.max(1, it.h);
+    const lw = Math.max(1, width * ((scaleX + scaleY) / 2));
+    ctx2.strokeStyle = color;
+    ctx2.lineWidth = lw;
+    ctx2.lineCap = 'round';
+    ctx2.lineJoin = 'round';
+    ctx2.beginPath();
+    ctx2.moveTo(p1.x, p1.y);
+    ctx2.lineTo(p2.x, p2.y);
+    ctx2.stroke();
+    render();
+    return;
+  }
+
+  // Default: draw on background document
+  dctx.strokeStyle = color;
+  dctx.lineWidth = width;
   dctx.lineCap = 'round';
   dctx.lineJoin = 'round';
   dctx.beginPath();
@@ -416,7 +468,7 @@ function drawLine(a, b) {
 // Pointer interactions
 canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
-  const isBrush = brushToggle.getAttribute('aria-pressed') === 'true';
+  const isBrush = (brushToggle.getAttribute('aria-pressed') === 'true') || (drawMode && drawMode.checked);
   const isCrop = (cropToggle && cropToggle.getAttribute('aria-pressed') === 'true') && crop.active;
   if (isCrop) {
     const ip = getImagePoint(e);
@@ -444,6 +496,18 @@ canvas.addEventListener('pointerdown', (e) => {
   if (isBrush) {
     isDrawing = true;
     lastPoint = getImagePoint(e);
+    // Decide draw target: topmost object under pointer, otherwise background doc
+    const hitId = objects.hitTest(lastPoint);
+    if (hitId) {
+      const it = objects.getById(hitId);
+      if (it) {
+        drawTarget = { type: 'object', id: hitId, before: cloneItem(it) };
+      } else {
+        drawTarget = { type: 'doc' };
+      }
+    } else {
+      drawTarget = { type: 'doc' };
+    }
   }
 });
 canvas.addEventListener('pointermove', (e) => {
@@ -471,7 +535,22 @@ canvas.addEventListener('pointermove', (e) => {
   lastPoint = p;
 });
 function endStroke() {
-  if (isDrawing) { isDrawing = false; lastPoint = null; snapshot(); }
+  if (isDrawing) {
+    isDrawing = false; lastPoint = null;
+    if (drawTarget && drawTarget.type === 'object') {
+      const it = objects.getById(drawTarget.id);
+      if (it && drawTarget.before) {
+        const after = cloneItem(it);
+        objHistory.undo.push({ type: 'modify', id: it.id, before: drawTarget.before, after });
+        objHistory.redo.length = 0; updateUndoRedoState();
+        persist();
+      }
+    } else {
+      // Background raster changed
+      snapshot();
+    }
+    drawTarget = null;
+  }
   if (isPanning) { isPanning = false; }
   if (crop.drag) { crop.endDrag(); }
   if (objects.drag) {

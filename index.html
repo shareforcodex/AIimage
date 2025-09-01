@@ -8,14 +8,15 @@
   </head>
   <body>
     <header class="topbar">
-      <div class="brand" aria-hidden="true">
+      
+      <nav class="menubar" role="menubar" aria-label="Main menu">
+        <div class="brand" aria-hidden="true">
         <svg class="brand-icon" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="">
           <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
           <circle cx="12" cy="12" r="3" fill="currentColor"/>
           <path d="M18 6.8 18.7 8.3 20.2 9 18.7 9.7 18 11.2 17.3 9.7 15.8 9 17.3 8.3 18 6.8Z" fill="currentColor"/>
         </svg>
       </div>
-      <nav class="menubar" role="menubar" aria-label="Main menu">
         <details class="menu">
           <summary>File</summary>
           <div class="menu-panel horizontal">
@@ -48,11 +49,11 @@
         </details>
 
         <details class="menu">
-          <summary>Text</summary>
+          <summary>Add</summary>
           <div class="menu-panel horizontal">
             <input id="textContent" class="input menu-text-input" type="text" placeholder="Enter text" />
             <input id="textColor" class="input color" type="color" value="#ffffff" />
-            <input id="textSize" class="input number" type="number" min="6" max="512" step="1" value="48" />
+            <input id="textSize" class="input range" type="range" min="1" max="512" step="1" value="48" />
             <label class="menu-item menu-check">
               <input id="textBold" type="checkbox" /> Bold
             </label>
@@ -70,6 +71,9 @@
               <option value="monospace">Monospace</option>
             </select>
             <button id="addTextBtn" class="btn small">Add Text</button>
+            <label class="menu-item menu-check" title="Draw freehand using Text Size and Text Color">
+              <input id="drawMode" type="checkbox" /> Draw Mode
+            </label>
           </div>
         </details>
 
