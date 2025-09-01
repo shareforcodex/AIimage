@@ -62,6 +62,34 @@ const viewport = new Viewport();
 const crop = new CropMarquee();
 const objects = new ObjectsManager();
 
+// Improve usability on touch/small screens by enlarging handles
+function isCoarsePointer() {
+  try {
+    return (
+      (window.matchMedia && (window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(any-pointer: coarse)').matches)) ||
+      (navigator.maxTouchPoints || 0) > 0
+    );
+  } catch (_) { return (navigator.maxTouchPoints || 0) > 0; }
+}
+function desiredHandleSize() {
+  const smallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 768;
+  const coarse = isCoarsePointer();
+  const base = 20; // default desktop size
+  const touchSize = 40; // larger, easier to hit
+  let size = (coarse || smallViewport) ? touchSize : base;
+  // Slight bump on very high DPR screens for comfort
+  const dpr = window.devicePixelRatio || 1;
+  if (size >= touchSize && dpr > 2) size = Math.round(size * 1.1);
+  return size;
+}
+function applyHandleSize() {
+  const hs = desiredHandleSize();
+  crop.handleSize = hs;
+  objects.handleSize = hs;
+}
+applyHandleSize();
+window.addEventListener('resize', () => { applyHandleSize(); render(); });
+
 const persist = debounce(() => saveState(doc, { scale: viewport.scale, tx: viewport.tx, ty: viewport.ty }, objects), 300);
 
 // Objects action history (for undo/redo of move/resize/crop/add)
