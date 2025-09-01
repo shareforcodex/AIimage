@@ -56,6 +56,7 @@ const keepAspect = document.getElementById('keepAspect');
 const textContent = document.getElementById('textContent');
 const textColor = document.getElementById('textColor');
 const textSize = document.getElementById('textSize');
+const textSizeVal = document.getElementById('textSizeVal');
 const textBold = document.getElementById('textBold');
 const textFont = document.getElementById('textFont');
 const addTextBtn = document.getElementById('addTextBtn');
@@ -812,4 +813,13 @@ if (addTextBtn) {
     render();
     persist();
   });
+}
+
+// Reflect Text Size slider value next to the control
+function updateTextSizeLabel() {
+  if (textSize && textSizeVal) textSizeVal.textContent = String(textSize.value);
+}
+if (textSize) {
+  textSize.addEventListener('input', updateTextSizeLabel);
+  updateTextSizeLabel();
 }

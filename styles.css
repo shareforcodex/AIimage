@@ -318,3 +318,12 @@ canvas {
 /* Text menu helpers */
 .menu-text-input { min-width: 180px; }
 .menu-check { padding: 0 6px; }
+
+/* Small value badge for inline sliders */
+.size-value {
+  display: inline-block;
+  min-width: 32px;
+  text-align: right;
+  color: var(--muted);
+  font-size: 12px;
+}
