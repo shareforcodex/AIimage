@@ -637,6 +637,23 @@ applyCurvesBtn.addEventListener('click', () => {
   updateStatus();
 })();
 
+// Menubar behavior: only one open at a time, close on item click
+const menus = Array.from(document.querySelectorAll('.menubar .menu'));
+for (const m of menus) {
+  m.addEventListener('toggle', () => {
+    if (m.open) {
+      for (const other of menus) if (other !== m && other.open) other.open = false;
+    }
+  });
+  // For horizontal, quick-action menus, close after click
+  const panel = m.querySelector('.menu-panel.horizontal');
+  if (panel) {
+    panel.querySelectorAll('.menu-item').forEach((el) => {
+      el.addEventListener('click', () => { m.open = false; }, { capture: true });
+    });
+  }
+}
+
 // Settings
 if (keepAspect) {
   objects.keepAspect = !!keepAspect.checked;

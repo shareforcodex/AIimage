@@ -18,7 +18,7 @@
       <nav class="menubar" role="menubar" aria-label="Main menu">
         <details class="menu">
           <summary>File</summary>
-          <div class="menu-panel">
+          <div class="menu-panel horizontal">
             <label class="menu-item">
               <input id="fileInput" type="file" accept="image/*" multiple hidden />
               <span>Load Image…</span>
@@ -29,7 +29,7 @@
 
         <details class="menu">
           <summary>Edit</summary>
-          <div class="menu-panel">
+          <div class="menu-panel horizontal">
             <button id="undoBtn" class="menu-item" title="Undo (Ctrl/Cmd+Z)">Undo</button>
             <button id="redoBtn" class="menu-item" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
             <hr />
@@ -39,7 +39,7 @@
 
         <details class="menu">
           <summary>View</summary>
-          <div class="menu-panel">
+          <div class="menu-panel horizontal">
             <button id="zoomOut" class="menu-item">Zoom Out</button>
             <button id="zoomReset" class="menu-item">100%</button>
             <button id="zoomIn" class="menu-item">Zoom In</button>
