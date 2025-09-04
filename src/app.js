@@ -51,6 +51,7 @@ const curvesPreset = document.getElementById('curvesPreset');
 const applyCurvesBtn = document.getElementById('applyCurves');
 const exportBtn = document.getElementById('exportBtn');
 const keepAspect = document.getElementById('keepAspect');
+const statusBar = document.getElementById('statusBar');
 
 // Text tools
 const textContent = document.getElementById('textContent');
@@ -110,7 +111,7 @@ function cloneItem(it) {
   const c = document.createElement('canvas');
   c.width = it.canvas.width; c.height = it.canvas.height;
   c.getContext('2d').drawImage(it.canvas, 0, 0);
-  return { id: it.id, canvas: c, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh };
+  return { id: it.id, canvas: c, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh, meta: it.meta ? { ...it.meta } : null };
 }
 
 function cloneAllItems() {
@@ -635,6 +636,8 @@ canvas.addEventListener('pointerdown', (e) => {
       // capture starting state for history
       const sel = objects.selected;
       if (sel) objActionStart = cloneItem(sel);
+      // If Add menu is open and selected is text, sync inputs
+      syncAddPanelFromSelection();
       render();
       return;
     } else {
@@ -712,6 +715,8 @@ function endStroke() {
       objHistory.redo.length = 0; // clear redo on new action
       updateUndoRedoState();
     }
+    // Update Add panel inputs if a text object is selected after interaction
+    syncAddPanelFromSelection();
     objActionStart = null;
     persist();
   }
@@ -960,10 +965,30 @@ if (addTextBtn) {
     }
     const bold = /bold/i.test(variant);
     const italic = /italic/i.test(variant);
+
+    // If a text object is selected, update it instead of creating a new one
+    const sel = objects.selected;
+    if (sel && sel.meta && sel.meta.type === 'text') {
+      const before = cloneItem(sel);
+      sel.meta = { type: 'text', text: txt, size, color, bold, italic, font, variant };
+      const newCanvas = createTextCanvas(txt, { size, color, bold, italic, font });
+      // Keep top-left position; update dimensions and source rect
+      sel.canvas = newCanvas;
+      sel.sx = 0; sel.sy = 0; sel.sw = newCanvas.width; sel.sh = newCanvas.height;
+      sel.w = newCanvas.width; sel.h = newCanvas.height;
+      render();
+      const after = cloneItem(sel);
+      objHistory.undo.push({ type: 'modify', id: sel.id, before, after });
+      objHistory.redo.length = 0; updateUndoRedoState();
+      persist();
+      return;
+    }
+
     const c = createTextCanvas(txt, { size, color, bold, italic, font });
-    // Place at current viewport top-left for visibility
-    const tl = viewport.canvasToImage({ x: 20, y: 20 });
-    const id = objects.addImageBitmap(c, { x: Math.round(tl.x), y: Math.round(tl.y) });
+    // Place centered on the document
+    const x = Math.round((doc.width - c.width) / 2);
+    const y = Math.round((doc.height - c.height) / 2);
+    const id = objects.addImageBitmap(c, { x, y }, { type: 'text', text: txt, size, color, bold, italic, font, variant });
     objects.selectedId = id;
     // record add action
     const it = objects.getById(id);
@@ -984,3 +1009,73 @@ if (textSize) {
   textSize.addEventListener('input', updateTextSizeLabel);
   updateTextSizeLabel();
 }
+
+// Sync Add panel with selected text object when menu opens or selection changes
+function variantFromFlags({ bold, italic }) {
+  if (bold && italic) return 'bolditalic';
+  if (bold) return 'bold';
+  if (italic) return 'italic';
+  return 'regular';
+}
+function syncAddPanelFromSelection() {
+  const sel = objects.selected;
+  if (!sel || !sel.meta || sel.meta.type !== 'text') return;
+  const m = sel.meta;
+  if (textContent) textContent.value = m.text ?? '';
+  if (textColor && m.color) textColor.value = m.color;
+  if (textSize && m.size) { textSize.value = String(m.size); updateTextSizeLabel(); }
+  if (textStyle) {
+    const variant = m.variant || variantFromFlags(m);
+    const val = `${m.font || 'Arial'}|${variant}`;
+    // If option exists, set; otherwise default
+    textStyle.value = val;
+  }
+}
+
+// Detect selection changes via interactions and canvas clicks
+const addMenuEl = Array.from(document.querySelectorAll('.menu > summary')).find(s => s.textContent.trim() === 'Add')?.parentElement;
+if (addMenuEl) {
+  addMenuEl.addEventListener('toggle', () => {
+    if (addMenuEl.open) syncAddPanelFromSelection();
+  });
+}
+
+function updateSelectedTextFromInputs() {
+  const sel = objects.selected;
+  if (!sel || !sel.meta || sel.meta.type !== 'text') return false;
+  const before = cloneItem(sel);
+  const txt = (textContent && textContent.value) || '';
+  const size = Math.max(6, Math.min(512, Number(textSize && textSize.value) || 48));
+  const color = (textColor && textColor.value) || '#ffffff';
+  let font = 'Arial';
+  let variant = 'regular';
+  if (textStyle && textStyle.value) {
+    const parts = String(textStyle.value).split('|');
+    font = parts[0] || 'Arial';
+    variant = parts[1] || 'regular';
+  }
+  const bold = /bold/i.test(variant);
+  const italic = /italic/i.test(variant);
+  sel.meta = { type: 'text', text: txt, size, color, bold, italic, font, variant };
+  const nc = createTextCanvas(txt, { size, color, bold, italic, font });
+  const cx = sel.x + sel.w / 2;
+  const cy = sel.y + sel.h / 2;
+  sel.canvas = nc;
+  sel.sx = 0; sel.sy = 0; sel.sw = nc.width; sel.sh = nc.height;
+  sel.w = nc.width; sel.h = nc.height;
+  // Keep center anchored so editing feels stable
+  sel.x = Math.round(cx - sel.w / 2);
+  sel.y = Math.round(cy - sel.h / 2);
+  render();
+  const after = cloneItem(sel);
+  objHistory.undo.push({ type: 'modify', id: sel.id, before, after });
+  objHistory.redo.length = 0; updateUndoRedoState();
+  persist();
+  return true;
+}
+
+// Live-update selected text when changing controls
+if (textContent) textContent.addEventListener('input', () => { updateSelectedTextFromInputs(); });
+if (textColor) textColor.addEventListener('change', () => { updateSelectedTextFromInputs(); });
+if (textSize) textSize.addEventListener('change', () => { updateSelectedTextFromInputs(); });
+if (textStyle) textStyle.addEventListener('change', () => { updateSelectedTextFromInputs(); });

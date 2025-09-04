@@ -8,7 +8,7 @@ export class ObjectsManager {
     this.keepAspect = true;
   }
 
-  addImageBitmap(img, at = null) {
+  addImageBitmap(img, at = null, meta = null) {
     const iw = img.width; const ih = img.height;
     const c = document.createElement('canvas');
     c.width = iw; c.height = ih;
@@ -22,6 +22,7 @@ export class ObjectsManager {
       x: (at && typeof at.x === 'number') ? at.x : 0,
       y: (at && typeof at.y === 'number') ? at.y : 0,
       w: iw, h: ih,
+      meta: meta || null,
     };
     this.items.push(item);
     this.selectedId = id;
@@ -62,6 +63,7 @@ export class ObjectsManager {
       canvas: data.canvas,
       x: data.x, y: data.y, w: data.w, h: data.h,
       sx: data.sx ?? 0, sy: data.sy ?? 0, sw: data.sw ?? data.canvas.width, sh: data.sh ?? data.canvas.height,
+      meta: data.meta ?? null,
     };
     this.items.push(item);
     this.selectedId = id;
@@ -74,6 +76,7 @@ export class ObjectsManager {
     it.canvas = data.canvas;
     it.x = data.x; it.y = data.y; it.w = data.w; it.h = data.h;
     it.sx = data.sx; it.sy = data.sy; it.sw = data.sw; it.sh = data.sh;
+    it.meta = data.meta ?? it.meta ?? null;
     return true;
   }
 
@@ -248,7 +251,7 @@ export class ObjectsManager {
     const out = [];
     for (const it of this.items) {
       const blob = await canvasToBlob(it.canvas);
-      out.push({ id: it.id, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh, blob });
+      out.push({ id: it.id, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh, blob, meta: it.meta ?? null });
     }
     return out;
   }
@@ -265,7 +268,8 @@ export class ObjectsManager {
       const id = this.nextId++;
       this.items.push({ id, canvas: c,
         x: s.x, y: s.y, w: s.w, h: s.h,
-        sx: s.sx ?? 0, sy: s.sy ?? 0, sw: s.sw ?? c.width, sh: s.sh ?? c.height
+        sx: s.sx ?? 0, sy: s.sy ?? 0, sw: s.sw ?? c.width, sh: s.sh ?? c.height,
+        meta: s.meta ?? null,
       });
     }
   }
