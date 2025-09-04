@@ -874,6 +874,10 @@ applyCurvesBtn.addEventListener('click', () => {
   updateStatus();
 })();
 
+// Prevent long-press context menu/select on iOS around the canvas
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.addEventListener('touchstart', (e) => { if (e.touches && e.touches.length === 1) e.preventDefault(); }, { passive: false });
+
 // Menubar behavior: only one top-level menu open at a time
 const menus = Array.from(document.querySelectorAll('.menubar > .menu'));
 for (const m of menus) {

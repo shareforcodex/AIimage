@@ -13,6 +13,20 @@
   box-sizing: border-box;
 }
 
+/* Prevent accidental selection/callout on iOS during long-press near canvas */
+* { -webkit-tap-highlight-color: transparent; }
+html, body, .workspace, .canvas-wrap, canvas, .menubar, .menu, .menu-panel {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Allow selection where it’s appropriate (forms/inputs) */
+input, textarea, select, .input, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 html,
 body {
   height: 100%;
@@ -153,6 +167,9 @@ canvas {
   width: min(95vw, 1024px);
   height: auto;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .status-bar {
