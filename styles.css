@@ -295,6 +295,19 @@ canvas {
   width: 56px;
 }
 
+/* Keep checkbox label text on a single line and not constrained */
+.menu-row label.menu-check,
+.menu-row .menu-item.menu-check {
+  width: auto;
+  color: var(--text);
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  padding: 0 6px;
+}
+
 .menu-section {
   border-top: 1px solid #000;
   margin-top: 6px;
@@ -317,6 +330,7 @@ canvas {
 
 /* Text menu helpers */
 .menu-text-input { min-width: 180px; }
+.menu-row .menu-text-input { flex: 1; }
 .menu-check { padding: 0 6px; }
 
 /* Small value badge for inline sliders */

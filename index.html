@@ -50,31 +50,86 @@
 
         <details class="menu">
           <summary>Add</summary>
-          <div class="menu-panel horizontal">
-            <input id="textContent" class="input menu-text-input" type="text" placeholder="Enter text" />
-            <input id="textColor" class="input color" type="color" value="#ffffff" />
-            <input id="textSize" class="input range" type="range" min="1" max="512" step="1" value="48" />
-            <span id="textSizeVal" class="size-value">48</span>
-            <label class="menu-item menu-check">
-              <input id="textBold" type="checkbox" /> Bold
-            </label>
-            <select id="textFont" class="input">
-              <option value="Arial">Arial</option>
-              <option value="Helvetica">Helvetica</option>
-              <option value="Georgia">Georgia</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Courier New">Courier New</option>
-              <option value="Menlo">Menlo</option>
-              <option value="Monaco">Monaco</option>
-              <option value="system-ui">System UI</option>
-              <option value="sans-serif">Sans-Serif</option>
-              <option value="serif">Serif</option>
-              <option value="monospace">Monospace</option>
-            </select>
-            <button id="addTextBtn" class="btn small">Add Text</button>
-            <label class="menu-item menu-check" title="Draw freehand using Text Size and Text Color">
-              <input id="drawMode" type="checkbox" /> Draw Mode
-            </label>
+          <div class="menu-panel">
+            <div class="menu-row">
+              <label class="menu-item menu-check" title="Draw freehand using Text Size and Text Color">
+                <input id="drawMode" type="checkbox" /> Draw Mode
+              </label>
+            </div>
+            <div class="menu-row">
+              <input id="textContent" class="input menu-text-input" type="text" placeholder="Enter text" />
+              <button id="addTextBtn" class="btn small">Add Text</button>
+            </div>
+            <div class="menu-row">
+              <input id="textColor" class="input color" type="color" value="#ffffff" />
+              <input id="textSize" class="input range" type="range" min="1" max="512" step="1" value="48" />
+              <span id="textSizeVal" class="size-value">48</span>
+            </div>
+            <div class="menu-row">
+              <label>Style</label>
+              <select id="textStyle" class="input">
+                <optgroup label="Arial">
+                  <option value="Arial|regular" selected>Arial • Regular</option>
+                  <option value="Arial|bold">Arial • Bold</option>
+                  <option value="Arial|italic">Arial • Italic</option>
+                  <option value="Arial|bolditalic">Arial • Bold Italic</option>
+                </optgroup>
+                <optgroup label="Helvetica">
+                  <option value="Helvetica|regular">Helvetica • Regular</option>
+                  <option value="Helvetica|bold">Helvetica • Bold</option>
+                  <option value="Helvetica|italic">Helvetica • Italic</option>
+                  <option value="Helvetica|bolditalic">Helvetica • Bold Italic</option>
+                </optgroup>
+                <optgroup label="Georgia">
+                  <option value="Georgia|regular">Georgia • Regular</option>
+                  <option value="Georgia|bold">Georgia • Bold</option>
+                  <option value="Georgia|italic">Georgia • Italic</option>
+                  <option value="Georgia|bolditalic">Georgia • Bold Italic</option>
+                </optgroup>
+                <optgroup label="Times New Roman">
+                  <option value="Times New Roman|regular">Times New Roman • Regular</option>
+                  <option value="Times New Roman|bold">Times New Roman • Bold</option>
+                  <option value="Times New Roman|italic">Times New Roman • Italic</option>
+                  <option value="Times New Roman|bolditalic">Times New Roman • Bold Italic</option>
+                </optgroup>
+                <optgroup label="Courier New">
+                  <option value="Courier New|regular">Courier New • Regular</option>
+                  <option value="Courier New|bold">Courier New • Bold</option>
+                  <option value="Courier New|italic">Courier New • Italic</option>
+                  <option value="Courier New|bolditalic">Courier New • Bold Italic</option>
+                </optgroup>
+                <optgroup label="Menlo">
+                  <option value="Menlo|regular">Menlo • Regular</option>
+                  <option value="Menlo|bold">Menlo • Bold</option>
+                  <option value="Menlo|italic">Menlo • Italic</option>
+                  <option value="Menlo|bolditalic">Menlo • Bold Italic</option>
+                </optgroup>
+                <optgroup label="Monaco">
+                  <option value="Monaco|regular">Monaco • Regular</option>
+                  <option value="Monaco|bold">Monaco • Bold</option>
+                  <option value="Monaco|italic">Monaco • Italic</option>
+                  <option value="Monaco|bolditalic">Monaco • Bold Italic</option>
+                </optgroup>
+                <optgroup label="System & Generic">
+                  <option value="system-ui|regular">System UI • Regular</option>
+                  <option value="system-ui|bold">System UI • Bold</option>
+                  <option value="system-ui|italic">System UI • Italic</option>
+                  <option value="system-ui|bolditalic">System UI • Bold Italic</option>
+                  <option value="sans-serif|regular">Sans-Serif • Regular</option>
+                  <option value="sans-serif|bold">Sans-Serif • Bold</option>
+                  <option value="sans-serif|italic">Sans-Serif • Italic</option>
+                  <option value="sans-serif|bolditalic">Sans-Serif • Bold Italic</option>
+                  <option value="serif|regular">Serif • Regular</option>
+                  <option value="serif|bold">Serif • Bold</option>
+                  <option value="serif|italic">Serif • Italic</option>
+                  <option value="serif|bolditalic">Serif • Bold Italic</option>
+                  <option value="monospace|regular">Monospace • Regular</option>
+                  <option value="monospace|bold">Monospace • Bold</option>
+                  <option value="monospace|italic">Monospace • Italic</option>
+                  <option value="monospace|bolditalic">Monospace • Bold Italic</option>
+                </optgroup>
+              </select>
+            </div>
           </div>
         </details>
 

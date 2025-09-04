@@ -57,8 +57,7 @@ const textContent = document.getElementById('textContent');
 const textColor = document.getElementById('textColor');
 const textSize = document.getElementById('textSize');
 const textSizeVal = document.getElementById('textSizeVal');
-const textBold = document.getElementById('textBold');
-const textFont = document.getElementById('textFont');
+const textStyle = document.getElementById('textStyle');
 const addTextBtn = document.getElementById('addTextBtn');
 const drawMode = document.getElementById('drawMode');
 
@@ -920,11 +919,11 @@ function updateStatus() {
 }
 
 // Text: create canvas for text and add as object
-function createTextCanvas(text, { size = 48, color = '#ffffff', bold = false, font = 'Arial' } = {}) {
+function createTextCanvas(text, { size = 48, color = '#ffffff', bold = false, italic = false, font = 'Arial' } = {}) {
   const pad = Math.ceil(size * 0.25);
   const tmp = document.createElement('canvas');
   const tctx = tmp.getContext('2d');
-  const fontStr = `${bold ? 'bold ' : ''}${size}px ${font}`;
+  const fontStr = `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${size}px ${font}`;
   tctx.font = fontStr;
   tctx.textBaseline = 'alphabetic';
   const metrics = tctx.measureText(text || '');
@@ -947,9 +946,17 @@ if (addTextBtn) {
     const txt = (textContent && textContent.value) || 'Text';
     const size = Math.max(6, Math.min(512, Number(textSize && textSize.value) || 48));
     const color = (textColor && textColor.value) || '#ffffff';
-    const bold = !!(textBold && textBold.checked);
-    const font = (textFont && textFont.value) || 'Arial';
-    const c = createTextCanvas(txt, { size, color, bold, font });
+    // Parse style selector value: "Font|variant"
+    let font = 'Arial';
+    let variant = 'regular';
+    if (textStyle && textStyle.value) {
+      const parts = String(textStyle.value).split('|');
+      font = parts[0] || 'Arial';
+      variant = parts[1] || 'regular';
+    }
+    const bold = /bold/i.test(variant);
+    const italic = /italic/i.test(variant);
+    const c = createTextCanvas(txt, { size, color, bold, italic, font });
     // Place at current viewport top-left for visibility
     const tl = viewport.canvasToImage({ x: 20, y: 20 });
     const id = objects.addImageBitmap(c, { x: Math.round(tl.x), y: Math.round(tl.y) });
