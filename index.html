@@ -109,50 +109,51 @@
         </details>
 
         <details class="menu">
-          <summary>Tools</summary>
+          <summary>More</summary>
           <div class="menu-panel">
-            <div class="menu-row">
-              <button id="brushToggle" class="menu-item" aria-pressed="false">Brush</button>
-              <input id="brushColor" class="input color" type="color" value="#ffffff" />
-              <input id="brushSize" class="input range" type="range" min="1" max="64" value="12" />
+            <div class="menu-section">
+              <div class="menu-label">Tools</div>
+              <div class="menu-row">
+                <button id="brushToggle" class="menu-item" aria-pressed="false">Brush</button>
+                <input id="brushColor" class="input color" type="color" value="#ffffff" />
+                <input id="brushSize" class="input range" type="range" min="1" max="64" value="12" />
+              </div>
+              <div class="menu-row">
+                <label>Keep Ratio</label>
+                <input id="keepAspect" type="checkbox" checked />
+              </div>
             </div>
-            <div class="menu-row">
-              <label>Keep Ratio</label>
-              <input id="keepAspect" type="checkbox" checked />
-            </div>
-          </div>
-        </details>
 
-        <details class="menu">
-          <summary>Filters</summary>
-          <div class="menu-panel">
-            <div class="menu-row">
-              <button id="filterBlur" class="menu-item">Blur</button>
-              <button id="filterSharpen" class="menu-item">Sharpen</button>
-            </div>
             <div class="menu-section">
-              <div class="menu-label">Levels</div>
-              <label class="slider"><span>Bri</span><input id="brightness" type="range" min="-100" max="100" value="0" /></label>
-              <label class="slider"><span>Con</span><input id="contrast" type="range" min="-100" max="100" value="0" /></label>
-              <label class="slider"><span>Sat</span><input id="saturation" type="range" min="-100" max="100" value="0" /></label>
-              <button id="applyAdjustBtn" class="btn small">Apply Adjust</button>
-            </div>
-            <div class="menu-section">
-              <div class="menu-label">Input Levels</div>
-              <label class="slider"><span>Lv Blk</span><input id="levelsBlack" type="range" min="0" max="255" value="0" /></label>
-              <label class="slider"><span>Gamma</span><input id="levelsGamma" type="range" min="10" max="300" value="100" /></label>
-              <label class="slider"><span>Lv Wht</span><input id="levelsWhite" type="range" min="1" max="255" value="255" /></label>
-              <button id="applyLevels" class="btn small">Apply Levels</button>
-            </div>
-            <div class="menu-section">
-              <div class="menu-label">Curves</div>
-              <select id="curvesPreset" class="input">
-                <option value="none">None</option>
-                <option value="s">S-Curve</option>
-                <option value="strong-s">Strong S</option>
-                <option value="inverse-s">Inverse S</option>
-              </select>
-              <button id="applyCurves" class="btn small">Apply Curves</button>
+              <div class="menu-label">Filters</div>
+              <div class="menu-row">
+                <button id="filterBlur" class="menu-item">Blur</button>
+                <button id="filterSharpen" class="menu-item">Sharpen</button>
+              </div>
+              <div class="menu-section">
+                <div class="menu-label">Levels</div>
+                <label class="slider"><span>Bri</span><input id="brightness" type="range" min="-100" max="100" value="0" /></label>
+                <label class="slider"><span>Con</span><input id="contrast" type="range" min="-100" max="100" value="0" /></label>
+                <label class="slider"><span>Sat</span><input id="saturation" type="range" min="-100" max="100" value="0" /></label>
+                <button id="applyAdjustBtn" class="btn small">Apply Adjust</button>
+              </div>
+              <div class="menu-section">
+                <div class="menu-label">Input Levels</div>
+                <label class="slider"><span>Lv Blk</span><input id="levelsBlack" type="range" min="0" max="255" value="0" /></label>
+                <label class="slider"><span>Gamma</span><input id="levelsGamma" type="range" min="10" max="300" value="100" /></label>
+                <label class="slider"><span>Lv Wht</span><input id="levelsWhite" type="range" min="1" max="255" value="255" /></label>
+                <button id="applyLevels" class="btn small">Apply Levels</button>
+              </div>
+              <div class="menu-section">
+                <div class="menu-label">Curves</div>
+                <select id="curvesPreset" class="input">
+                  <option value="none">None</option>
+                  <option value="s">S-Curve</option>
+                  <option value="strong-s">Strong S</option>
+                  <option value="inverse-s">Inverse S</option>
+                </select>
+                <button id="applyCurves" class="btn small">Apply Curves</button>
+              </div>
             </div>
           </div>
         </details>

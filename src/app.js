@@ -725,8 +725,8 @@ applyCurvesBtn.addEventListener('click', () => {
   updateStatus();
 })();
 
-// Menubar behavior: only one open at a time, close on item click
-const menus = Array.from(document.querySelectorAll('.menubar .menu'));
+// Menubar behavior: only one top-level menu open at a time
+const menus = Array.from(document.querySelectorAll('.menubar > .menu'));
 for (const m of menus) {
   m.addEventListener('toggle', () => {
     if (m.open) {
