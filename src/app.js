@@ -348,7 +348,53 @@ flipH.addEventListener('click', () => flip(true, false));
 flipV.addEventListener('click', () => flip(false, true));
 
 function rotate(deg) {
+  const sel = objects.selected;
+  if (sel) {
+    // Rotate only the selected object
+    const before = cloneItem(sel);
+    // Bake current crop into a standalone canvas
+    const srcW = sel.sw, srcH = sel.sh;
+    const srcC = document.createElement('canvas');
+    srcC.width = srcW; srcC.height = srcH;
+    srcC.getContext('2d').drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, srcW, srcH);
+    const rad = (deg * Math.PI) / 180;
+    const abs = Math.abs(deg) % 360;
+    const outW = (abs === 90 || abs === 270) ? srcH : srcW;
+    const outH = (abs === 90 || abs === 270) ? srcW : srcH;
+    const outC = document.createElement('canvas');
+    outC.width = outW; outC.height = outH;
+    const octx = outC.getContext('2d');
+    octx.save();
+    octx.translate(outW / 2, outH / 2);
+    octx.rotate(rad);
+    octx.drawImage(srcC, -srcW / 2, -srcH / 2);
+    octx.restore();
+    // Replace canvas and reset source rect
+    sel.canvas = outC;
+    sel.sx = 0; sel.sy = 0; sel.sw = outW; sel.sh = outH;
+    // Maintain visual center; swap displayed w/h for 90/270
+    const cx = sel.x + sel.w / 2;
+    const cy = sel.y + sel.h / 2;
+    if (abs === 90 || abs === 270) {
+      const nw = sel.h;
+      const nh = sel.w;
+      sel.w = nw; sel.h = nh;
+      sel.x = Math.round(cx - nw / 2);
+      sel.y = Math.round(cy - nh / 2);
+    }
+    // 180 keeps size/pos
+    render();
+    // record history for object action
+    const after = cloneItem(sel);
+    objHistory.undo.push({ type: 'modify', id: sel.id, before, after });
+    objHistory.redo.length = 0; updateUndoRedoState();
+    persist();
+    return;
+  }
+  // No selection: rotate entire document
   const rad = (deg * Math.PI) / 180;
+  const oldW = doc.width, oldH = doc.height;
+  const beforeObjects = cloneAllItems();
   const src = dctx.getImageData(0, 0, doc.width, doc.height);
   const srcCanvas = document.createElement('canvas');
   srcCanvas.width = src.width; srcCanvas.height = src.height;
@@ -367,11 +413,85 @@ function rotate(deg) {
   dctx.drawImage(srcCanvas, -src.width / 2, -src.height / 2);
   dctx.restore();
   viewport.reset(doc.width, doc.height, canvas.width, canvas.height);
+  // Rotate all objects around the document center and rotate their content
+  const newW = doc.width, newH = doc.height;
+  const cx0 = oldW / 2, cy0 = oldH / 2;
+  const cx1 = newW / 2, cy1 = newH / 2;
+  for (const it of objects.items) {
+    // Bake crop
+    const srcW = it.sw, srcH = it.sh;
+    const srcC = document.createElement('canvas');
+    srcC.width = srcW; srcC.height = srcH;
+    srcC.getContext('2d').drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, 0, 0, srcW, srcH);
+    // Rotate content
+    const abs = Math.abs(deg) % 360;
+    const outW = (abs === 90 || abs === 270) ? srcH : srcW;
+    const outH = (abs === 90 || abs === 270) ? srcW : srcH;
+    const outC = document.createElement('canvas');
+    outC.width = outW; outC.height = outH;
+    const octx = outC.getContext('2d');
+    octx.save();
+    octx.translate(outW / 2, outH / 2);
+    octx.rotate(rad);
+    octx.drawImage(srcC, -srcW / 2, -srcH / 2);
+    octx.restore();
+    it.canvas = outC;
+    it.sx = 0; it.sy = 0; it.sw = outW; it.sh = outH;
+    // Position: rotate center point around doc center
+    const ocx = it.x + it.w / 2;
+    const ocy = it.y + it.h / 2;
+    const dx = ocx - cx0;
+    const dy = ocy - cy0;
+    const ndx = Math.cos(rad) * dx - Math.sin(rad) * dy;
+    const ndy = Math.sin(rad) * dx + Math.cos(rad) * dy;
+    // New displayed size
+    if (abs === 90 || abs === 270) {
+      const nw = it.h;
+      const nh = it.w;
+      it.w = nw; it.h = nh;
+    }
+    const ncx = cx1 + ndx;
+    const ncy = cy1 + ndy;
+    it.x = Math.round(ncx - it.w / 2);
+    it.y = Math.round(ncy - it.h / 2);
+  }
   render();
   snapshot();
+  const afterObjects = cloneAllItems();
+  objHistory.undo.push({ type: 'replace', before: beforeObjects, after: afterObjects });
+  objHistory.redo.length = 0; updateUndoRedoState();
+  persist();
 }
 
 function flip(horizontal, vertical) {
+  const sel = objects.selected;
+  if (sel) {
+    const before = cloneItem(sel);
+    // Bake current crop
+    const srcW = sel.sw, srcH = sel.sh;
+    const srcC = document.createElement('canvas');
+    srcC.width = srcW; srcC.height = srcH;
+    srcC.getContext('2d').drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, srcW, srcH);
+    const outC = document.createElement('canvas');
+    outC.width = srcW; outC.height = srcH;
+    const octx = outC.getContext('2d');
+    octx.save();
+    octx.translate(horizontal ? outC.width : 0, vertical ? outC.height : 0);
+    octx.scale(horizontal ? -1 : 1, vertical ? -1 : 1);
+    octx.drawImage(srcC, 0, 0);
+    octx.restore();
+    // Replace canvas and reset source rect (dest size, pos unchanged)
+    sel.canvas = outC;
+    sel.sx = 0; sel.sy = 0; sel.sw = outC.width; sel.sh = outC.height;
+    render();
+    const after = cloneItem(sel);
+    objHistory.undo.push({ type: 'modify', id: sel.id, before, after });
+    objHistory.redo.length = 0; updateUndoRedoState();
+    persist();
+    return;
+  }
+  // No selection: flip the whole document (doc + objects)
+  const beforeObjects = cloneAllItems();
   const src = dctx.getImageData(0, 0, doc.width, doc.height);
   const srcCanvas = document.createElement('canvas');
   srcCanvas.width = src.width; srcCanvas.height = src.height;
@@ -382,8 +502,33 @@ function flip(horizontal, vertical) {
   dctx.scale(horizontal ? -1 : 1, vertical ? -1 : 1);
   dctx.drawImage(srcCanvas, 0, 0);
   dctx.restore();
+  // Flip all objects' content and positions across document dimensions
+  for (const it of objects.items) {
+    // Bake crop
+    const srcW = it.sw, srcH = it.sh;
+    const srcC = document.createElement('canvas');
+    srcC.width = srcW; srcC.height = srcH;
+    srcC.getContext('2d').drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, 0, 0, srcW, srcH);
+    const outC = document.createElement('canvas');
+    outC.width = srcW; outC.height = srcH;
+    const octx = outC.getContext('2d');
+    octx.save();
+    octx.translate(horizontal ? srcW : 0, vertical ? srcH : 0);
+    octx.scale(horizontal ? -1 : 1, vertical ? -1 : 1);
+    octx.drawImage(srcC, 0, 0);
+    octx.restore();
+    it.canvas = outC;
+    it.sx = 0; it.sy = 0; it.sw = outC.width; it.sh = outC.height;
+    // Mirror position
+    if (horizontal) it.x = Math.round(doc.width - (it.x + it.w));
+    if (vertical) it.y = Math.round(doc.height - (it.y + it.h));
+  }
   render();
   snapshot();
+  const afterObjects = cloneAllItems();
+  objHistory.undo.push({ type: 'replace', before: beforeObjects, after: afterObjects });
+  objHistory.redo.length = 0; updateUndoRedoState();
+  persist();
 }
 
 // Brush toggle
@@ -485,6 +630,7 @@ canvas.addEventListener('pointerdown', (e) => {
   // Objects interactions if not brush
   if (!isBrush) {
     const ip = getImagePoint(e);
+    const prevSel = objects.selected ? objects.selected.id : null;
     const acted = objects.beginInteraction(ip);
     if (acted) {
       // capture starting state for history
@@ -492,6 +638,10 @@ canvas.addEventListener('pointerdown', (e) => {
       if (sel) objActionStart = cloneItem(sel);
       render();
       return;
+    } else {
+      // If selection was cleared, re-render to hide selection box
+      const nowSel = objects.selected ? objects.selected.id : null;
+      if (prevSel && !nowSel) render();
     }
   }
   if (isBrush) {
