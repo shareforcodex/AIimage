@@ -24,6 +24,7 @@ const applyAdjustBtn = document.getElementById('applyAdjustBtn');
 
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
+const removeObjectBtn = document.getElementById('removeObject');
 
 const rotateL = document.getElementById('rotateL');
 const rotateR = document.getElementById('rotateR');
@@ -124,6 +125,9 @@ function doObjUndo() {
   if (act.type === 'add') {
     objects.removeById(act.item.id);
     objHistory.redo.push({ type: 'add', item: act.item });
+  } else if (act.type === 'remove') {
+    objects.addFromData(act.item);
+    objHistory.redo.push({ type: 'remove', item: act.item });
   } else if (act.type === 'modify') {
     objects.setFromData(act.id, act.before);
     objHistory.redo.push({ type: 'modify', id: act.id, before: act.before, after: act.after });
@@ -143,6 +147,9 @@ function doObjRedo() {
   if (act.type === 'add') {
     objects.addFromData(act.item);
     objHistory.undo.push({ type: 'add', item: act.item });
+  } else if (act.type === 'remove') {
+    objects.removeById(act.item.id);
+    objHistory.undo.push({ type: 'remove', item: act.item });
   } else if (act.type === 'modify') {
     objects.setFromData(act.id, act.after);
     objHistory.undo.push({ type: 'modify', id: act.id, before: act.before, after: act.after });
@@ -638,12 +645,13 @@ canvas.addEventListener('pointerdown', (e) => {
       if (sel) objActionStart = cloneItem(sel);
       // If Add menu is open and selected is text, sync inputs
       syncAddPanelFromSelection();
+      updateEditMenuRemoveState();
       render();
       return;
     } else {
       // If selection was cleared, re-render to hide selection box
       const nowSel = objects.selected ? objects.selected.id : null;
-      if (prevSel && !nowSel) render();
+      if (prevSel && !nowSel) { render(); updateEditMenuRemoveState(); }
     }
   }
   if (isBrush) {
@@ -890,6 +898,37 @@ for (const m of menus) {
     if (m.open) {
       for (const other of menus) if (other !== m && other.open) other.open = false;
     }
+  });
+}
+
+// Edit menu: show/hide Remove button based on selection
+function updateEditMenuRemoveState() {
+  if (!removeObjectBtn) return;
+  const sel = objects.selected;
+  // Show when an object is selected (images have meta null; text has meta.type === 'text')
+  removeObjectBtn.hidden = !sel;
+}
+
+const editMenuEl = Array.from(document.querySelectorAll('.menu > summary')).find(s => s.textContent.trim() === 'Edit')?.parentElement;
+if (editMenuEl) {
+  editMenuEl.addEventListener('toggle', () => {
+    if (editMenuEl.open) updateEditMenuRemoveState();
+  });
+}
+
+if (removeObjectBtn) {
+  removeObjectBtn.addEventListener('click', () => {
+    const sel = objects.selected;
+    if (!sel) return;
+    const confirmed = window.confirm('Remove the selected object?');
+    if (!confirmed) return;
+    const item = cloneItem(sel);
+    objects.removeById(sel.id);
+    render();
+    objHistory.undo.push({ type: 'remove', item });
+    objHistory.redo.length = 0; updateUndoRedoState();
+    persist();
+    updateEditMenuRemoveState();
   });
 }
 
