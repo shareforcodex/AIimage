@@ -16,6 +16,11 @@ const presetSelect = document.getElementById('presetSelect');
 const customW = document.getElementById('customW');
 const customH = document.getElementById('customH');
 const applySizeBtn = document.getElementById('applySizeBtn');
+// Object resizing controls (Edit menu)
+const objectSizePreset = document.getElementById('objectSizePreset');
+const objCustomW = document.getElementById('objCustomW');
+const objCustomH = document.getElementById('objCustomH');
+const applyObjSizeBtn = document.getElementById('applyObjSizeBtn');
 
 const brightness = document.getElementById('brightness');
 const contrast = document.getElementById('contrast');
@@ -51,6 +56,7 @@ const applyLevelsBtn = document.getElementById('applyLevels');
 const curvesPreset = document.getElementById('curvesPreset');
 const applyCurvesBtn = document.getElementById('applyCurves');
 const exportBtn = document.getElementById('exportBtn');
+const exportSelectedJpgBtn = document.getElementById('exportSelectedJpgBtn');
 const keepAspect = document.getElementById('keepAspect');
 const statusBar = document.getElementById('statusBar');
 
@@ -254,6 +260,11 @@ function clampInt(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+function clampPosInt(n) {
+  n = Math.round(Number(n) || 0);
+  return Math.max(1, Math.min(4096, n));
+}
+
 // Image loading
 fileInput.addEventListener('change', async (e) => {
   const files = Array.from(e.target.files || []);
@@ -300,6 +311,60 @@ applySizeBtn.addEventListener('click', () => {
   const h = Number(customH.value);
   if (w && h) setCanvasSize(w, h);
 });
+
+// Resize Selected Object (Edit menu)
+function resizeSelectedObjectTo(w, h) {
+  const sel = objects.selected;
+  if (!sel) return;
+  // Clamp and ensure positive
+  const tw = clampPosInt(w);
+  const th = clampPosInt(h);
+  const before = cloneItem(sel);
+  // Bake current crop to new target resolution
+  const srcW = sel.sw, srcH = sel.sh;
+  const srcC = document.createElement('canvas');
+  srcC.width = srcW; srcC.height = srcH;
+  srcC.getContext('2d').drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, srcW, srcH);
+  const outC = document.createElement('canvas');
+  outC.width = tw; outC.height = th;
+  outC.getContext('2d').drawImage(srcC, 0, 0, srcW, srcH, 0, 0, tw, th);
+  // Keep center anchored
+  const cx = sel.x + sel.w / 2;
+  const cy = sel.y + sel.h / 2;
+  sel.canvas = outC;
+  sel.sx = 0; sel.sy = 0; sel.sw = tw; sel.sh = th;
+  sel.w = tw; sel.h = th;
+  sel.x = Math.round(cx - tw / 2);
+  sel.y = Math.round(cy - th / 2);
+  render();
+  const after = cloneItem(sel);
+  objHistory.undo.push({ type: 'modify', id: sel.id, before, after });
+  objHistory.redo.length = 0; updateUndoRedoState();
+  persist();
+}
+
+if (objectSizePreset) {
+  objectSizePreset.addEventListener('change', () => {
+    if (!objectSizePreset.value) return;
+    const [w, h] = objectSizePreset.value.split('x').map(Number);
+    // Always reflect preset into custom inputs
+    if (objCustomW) objCustomW.value = String(w);
+    if (objCustomH) objCustomH.value = String(h);
+    // If there is a selection, also apply resize
+    const sel = objects.selected;
+    if (sel) resizeSelectedObjectTo(w, h);
+  });
+}
+if (applyObjSizeBtn) {
+  applyObjSizeBtn.addEventListener('click', () => {
+    const sel = objects.selected;
+    if (!sel) { window.alert('Select an image object first.'); return; }
+    const w = Number(objCustomW && objCustomW.value);
+    const h = Number(objCustomH && objCustomH.value);
+    if (!w || !h) return;
+    resizeSelectedObjectTo(w, h);
+  });
+}
 
 // Undo/Redo
 undoBtn.addEventListener('click', () => { restore(history.undo()); doObjUndo(); render(); persist(); updateUndoRedoState(); });
@@ -885,6 +950,7 @@ applyCurvesBtn.addEventListener('click', () => {
   }
   updateZoomLabel();
   updateStatus();
+  updateEditMenuRemoveState();
 })();
 
 // Prevent long-press context menu/select on iOS around the canvas
@@ -907,6 +973,15 @@ function updateEditMenuRemoveState() {
   const sel = objects.selected;
   // Show when an object is selected (images have meta null; text has meta.type === 'text')
   removeObjectBtn.hidden = !sel;
+  // Enable/disable related controls
+  if (exportSelectedJpgBtn) exportSelectedJpgBtn.disabled = !sel;
+  const controls = [objectSizePreset, objCustomW, objCustomH, applyObjSizeBtn];
+  for (const c of controls) if (c) c.disabled = !sel;
+  // Prefill custom size with current displayed size
+  if (sel && objCustomW && objCustomH) {
+    objCustomW.value = String(Math.round(sel.w));
+    objCustomH.value = String(Math.round(sel.h));
+  }
 }
 
 const editMenuEl = Array.from(document.querySelectorAll('.menu > summary')).find(s => s.textContent.trim() === 'Edit')?.parentElement;
@@ -957,6 +1032,26 @@ if (exportBtn) exportBtn.addEventListener('click', () => {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }, 'image/png');
+});
+
+// Export selected object as JPG
+if (exportSelectedJpgBtn) exportSelectedJpgBtn.addEventListener('click', () => {
+  const sel = objects.selected;
+  if (!sel) return;
+  const outC = document.createElement('canvas');
+  // Export the selected object's content at its intrinsic (crop) resolution
+  outC.width = Math.max(1, Math.round(sel.sw));
+  outC.height = Math.max(1, Math.round(sel.sh));
+  const octx = outC.getContext('2d');
+  octx.drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, outC.width, outC.height);
+  outC.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'selected.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, 'image/jpeg', 0.92);
 });
 
 function updateStatus() {
