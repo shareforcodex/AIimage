@@ -1038,6 +1038,12 @@ function exportCanvasToBlob(c, { mime, quality }) {
   return new Promise((resolve) => c.toBlob((b) => resolve(b), mime, quality));
 }
 
+function dateStamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
 async function exportFullCanvas() {
   const { mime, ext, quality } = getExportFormat();
   const outC = document.createElement('canvas');
@@ -1050,7 +1056,9 @@ async function exportFullCanvas() {
   if (!blob) return;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `export.${ext}`;
+  const sizeKB = Math.round((blob.size || 0) / 1024);
+  const stamp = dateStamp();
+  a.href = url; a.download = `canvas-${outC.width}x${outC.height}-${sizeKB}KB-${stamp}.${ext}`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -1069,7 +1077,9 @@ async function exportSelectedOnly() {
   if (!blob) return;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = `selected.${ext}`;
+  const sizeKB = Math.round((blob.size || 0) / 1024);
+  const stamp = dateStamp();
+  a.href = url; a.download = `selected-${outC.width}x${outC.height}-${sizeKB}KB-${stamp}.${ext}`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
