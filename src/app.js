@@ -56,8 +56,8 @@ const applyLevelsBtn = document.getElementById('applyLevels');
 const curvesPreset = document.getElementById('curvesPreset');
 const applyCurvesBtn = document.getElementById('applyCurves');
 const exportBtn = document.getElementById('exportBtn');
-const exportSelectedJpgBtn = document.getElementById('exportSelectedJpgBtn');
 const exportFormatSel = document.getElementById('exportFormat');
+const exportTargetSel = document.getElementById('exportTarget');
 const keepAspect = document.getElementById('keepAspect');
 const statusBar = document.getElementById('statusBar');
 
@@ -986,7 +986,6 @@ function updateEditMenuRemoveState() {
   // Show when an object is selected (images have meta null; text has meta.type === 'text')
   removeObjectBtn.hidden = !sel;
   // Enable/disable related controls
-  if (exportSelectedJpgBtn) exportSelectedJpgBtn.disabled = !sel;
   const controls = [objectSizePreset, objCustomW, objCustomH, applyObjSizeBtn];
   for (const c of controls) if (c) c.disabled = !sel;
   // Prefill custom size with current displayed size
@@ -1034,6 +1033,11 @@ function getExportFormat() {
   return { mime: 'image/jpeg', ext: 'jpg', quality: 0.92 };
 }
 
+function getExportTarget() {
+  const val = (exportTargetSel && exportTargetSel.value) || 'canvas';
+  return (val === 'selected') ? 'selected' : 'canvas';
+}
+
 function exportCanvasToBlob(c, { mime, quality }) {
   return new Promise((resolve) => c.toBlob((b) => resolve(b), mime, quality));
 }
@@ -1074,21 +1078,19 @@ async function exportSelectedOnly() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Ask user whether to export Selected or entire Canvas
+// Export based on selected target in File menu
 if (exportBtn) exportBtn.addEventListener('click', async () => {
-  const sel = objects.selected;
-  if (sel) {
-    const useSelected = window.confirm('Export selected object?\nOK = Selected • Cancel = Entire Canvas');
-    if (useSelected) await exportSelectedOnly();
-    else await exportFullCanvas();
+  const target = getExportTarget();
+  if (target === 'selected') {
+    if (!objects.selected) return; // do nothing if no selection
+    await exportSelectedOnly();
   } else {
-    const ok = window.confirm('No object selected. Export entire canvas?');
-    if (ok) await exportFullCanvas();
+    await exportFullCanvas();
   }
 });
 
 // Explicit selected export button (uses same format selector)
-if (exportSelectedJpgBtn) exportSelectedJpgBtn.addEventListener('click', async () => { await exportSelectedOnly(); });
+// Removed separate Export Selected button; handled via export target select.
 
 function updateStatus() {
   if (!statusBar) return;
