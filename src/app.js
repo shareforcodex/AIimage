@@ -1038,30 +1038,9 @@ function exportCanvasToBlob(c, { mime, quality }) {
   return new Promise((resolve) => c.toBlob((b) => resolve(b), mime, quality));
 }
 
-// Export: if an object is selected, export that region; otherwise export full doc
-async function doExportSelectedAware() {
+async function exportFullCanvas() {
   const { mime, ext, quality } = getExportFormat();
-  const sel = objects.selected;
   const outC = document.createElement('canvas');
-  if (sel) {
-    // Export selected object's current displayed bounds (WYSIWYG)
-    const w = Math.max(1, Math.round(sel.w));
-    const h = Math.max(1, Math.round(sel.h));
-    outC.width = w; outC.height = h;
-    const octx = outC.getContext('2d');
-    // For JPEG, fill background to avoid black transparency
-    if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
-    octx.drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, w, h);
-    const blob = await exportCanvasToBlob(outC, { mime, quality });
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `selected.${ext}`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return;
-  }
-  // No selection: export full document composite
   outC.width = canvas.width; outC.height = canvas.height;
   const tctx = outC.getContext('2d');
   if (mime === 'image/jpeg') { tctx.fillStyle = '#ffffff'; tctx.fillRect(0, 0, outC.width, outC.height); }
@@ -1076,10 +1055,7 @@ async function doExportSelectedAware() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-if (exportBtn) exportBtn.addEventListener('click', () => { doExportSelectedAware(); });
-
-// Explicit selected export button (uses same format selector)
-if (exportSelectedJpgBtn) exportSelectedJpgBtn.addEventListener('click', async () => {
+async function exportSelectedOnly() {
   const sel = objects.selected; if (!sel) return;
   const { mime, ext, quality } = getExportFormat();
   const outC = document.createElement('canvas');
@@ -1096,7 +1072,23 @@ if (exportSelectedJpgBtn) exportSelectedJpgBtn.addEventListener('click', async (
   a.href = url; a.download = `selected.${ext}`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Ask user whether to export Selected or entire Canvas
+if (exportBtn) exportBtn.addEventListener('click', async () => {
+  const sel = objects.selected;
+  if (sel) {
+    const useSelected = window.confirm('Export selected object?\nOK = Selected • Cancel = Entire Canvas');
+    if (useSelected) await exportSelectedOnly();
+    else await exportFullCanvas();
+  } else {
+    const ok = window.confirm('No object selected. Export entire canvas?');
+    if (ok) await exportFullCanvas();
+  }
 });
+
+// Explicit selected export button (uses same format selector)
+if (exportSelectedJpgBtn) exportSelectedJpgBtn.addEventListener('click', async () => { await exportSelectedOnly(); });
 
 function updateStatus() {
   if (!statusBar) return;
