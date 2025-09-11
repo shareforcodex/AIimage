@@ -55,9 +55,8 @@ const levelsWhite = document.getElementById('levelsWhite');
 const applyLevelsBtn = document.getElementById('applyLevels');
 const curvesPreset = document.getElementById('curvesPreset');
 const applyCurvesBtn = document.getElementById('applyCurves');
-const exportBtn = document.getElementById('exportBtn');
 const exportFormatSel = document.getElementById('exportFormat');
-const exportTargetSel = document.getElementById('exportTarget');
+const exportActionSel = document.getElementById('exportAction');
 const keepAspect = document.getElementById('keepAspect');
 const statusBar = document.getElementById('statusBar');
 
@@ -1033,10 +1032,7 @@ function getExportFormat() {
   return { mime: 'image/jpeg', ext: 'jpg', quality: 0.92 };
 }
 
-function getExportTarget() {
-  const val = (exportTargetSel && exportTargetSel.value) || 'canvas';
-  return (val === 'selected') ? 'selected' : 'canvas';
-}
+// No persistent target; export action select triggers immediately
 
 function exportCanvasToBlob(c, { mime, quality }) {
   return new Promise((resolve) => c.toBlob((b) => resolve(b), mime, quality));
@@ -1078,15 +1074,17 @@ async function exportSelectedOnly() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Export based on selected target in File menu
-if (exportBtn) exportBtn.addEventListener('click', async () => {
-  const target = getExportTarget();
-  if (target === 'selected') {
-    if (!objects.selected) return; // do nothing if no selection
-    await exportSelectedOnly();
-  } else {
+// Export based on dropdown selection (Canvas/Selected)
+if (exportActionSel) exportActionSel.addEventListener('change', async () => {
+  const val = exportActionSel.value;
+  if (val === 'canvas') {
     await exportFullCanvas();
+  } else if (val === 'selected') {
+    if (objects.selected) await exportSelectedOnly();
+    // else no-op
   }
+  // Reset to placeholder "Export…" for next time
+  exportActionSel.value = '';
 });
 
 // Explicit selected export button (uses same format selector)
