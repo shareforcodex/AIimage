@@ -24,8 +24,16 @@
               <input id="fileInput" type="file" accept="image/*" multiple hidden />
               <span>Load Image…</span>
             </label>
-            <button id="exportBtn" class="menu-item">Export Image…</button>
-            <button id="exportSelectedJpgBtn" class="menu-item" disabled>Export Selected as JPG…</button>
+            <div class="menu-row" style="margin:0 8px 0 0;">
+              <label style="width:auto;">Format</label>
+              <select id="exportFormat" class="input">
+                <option value="jpeg" selected>JPEG</option>
+                <option value="png">PNG</option>
+                <option value="webp">WEBP</option>
+              </select>
+            </div>
+            <button id="exportBtn" class="menu-item">Export…</button>
+            <button id="exportSelectedJpgBtn" class="menu-item" disabled>Export Selected…</button>
           </div>
         </details>
 

@@ -57,6 +57,7 @@ const curvesPreset = document.getElementById('curvesPreset');
 const applyCurvesBtn = document.getElementById('applyCurves');
 const exportBtn = document.getElementById('exportBtn');
 const exportSelectedJpgBtn = document.getElementById('exportSelectedJpgBtn');
+const exportFormatSel = document.getElementById('exportFormat');
 const keepAspect = document.getElementById('keepAspect');
 const statusBar = document.getElementById('statusBar');
 
@@ -179,10 +180,21 @@ function render() {
   // Draw document boundary
   ctx.save();
   viewport.apply(ctx);
-  ctx.strokeStyle = '#5a5a5a';
-  ctx.lineWidth = 1 / viewport.scale;
-  ctx.setLineDash([4 / viewport.scale, 4 / viewport.scale]);
-  ctx.strokeRect(0.5 / viewport.scale, 0.5 / viewport.scale, doc.width - 1 / viewport.scale, doc.height - 1 / viewport.scale);
+  const s = viewport.scale || 1;
+  const px = 1 / s;
+  const thick = 3 * px; // thicker, scale-stable
+  const dash = [8 * px, 4 * px];
+  const x = 0.5 * px, y = 0.5 * px;
+  const w = doc.width - 1 * px, h = doc.height - 1 * px;
+  // Backing stroke for contrast
+  ctx.setLineDash(dash);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.lineWidth = thick + 2 * px;
+  ctx.strokeRect(x, y, w, h);
+  // Foreground accent stroke
+  ctx.strokeStyle = '#4dabf7';
+  ctx.lineWidth = thick;
+  ctx.strokeRect(x, y, w, h);
   ctx.setLineDash([]);
   ctx.restore();
   crop.draw(ctx, viewport, canvas);
@@ -1015,43 +1027,75 @@ if (keepAspect) {
   });
 }
 
-// Export composite (doc + objects) as PNG
-if (exportBtn) exportBtn.addEventListener('click', () => {
-  const tmp = document.createElement('canvas');
-  // Export exactly the document boundary size (same as canvas intrinsic size)
-  tmp.width = canvas.width; tmp.height = canvas.height;
-  const tctx = tmp.getContext('2d');
-  tctx.clearRect(0, 0, tmp.width, tmp.height);
+function getExportFormat() {
+  const val = (exportFormatSel && exportFormatSel.value) || 'jpeg';
+  if (val === 'png') return { mime: 'image/png', ext: 'png', quality: undefined };
+  if (val === 'webp') return { mime: 'image/webp', ext: 'webp', quality: 0.92 };
+  return { mime: 'image/jpeg', ext: 'jpg', quality: 0.92 };
+}
+
+function exportCanvasToBlob(c, { mime, quality }) {
+  return new Promise((resolve) => c.toBlob((b) => resolve(b), mime, quality));
+}
+
+// Export: if an object is selected, export that region; otherwise export full doc
+async function doExportSelectedAware() {
+  const { mime, ext, quality } = getExportFormat();
+  const sel = objects.selected;
+  const outC = document.createElement('canvas');
+  if (sel) {
+    // Export selected object's current displayed bounds (WYSIWYG)
+    const w = Math.max(1, Math.round(sel.w));
+    const h = Math.max(1, Math.round(sel.h));
+    outC.width = w; outC.height = h;
+    const octx = outC.getContext('2d');
+    // For JPEG, fill background to avoid black transparency
+    if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
+    octx.drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, w, h);
+    const blob = await exportCanvasToBlob(outC, { mime, quality });
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `selected.${ext}`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return;
+  }
+  // No selection: export full document composite
+  outC.width = canvas.width; outC.height = canvas.height;
+  const tctx = outC.getContext('2d');
+  if (mime === 'image/jpeg') { tctx.fillStyle = '#ffffff'; tctx.fillRect(0, 0, outC.width, outC.height); }
   tctx.drawImage(doc, 0, 0);
   for (const it of objects.items) tctx.drawImage(it.canvas, it.x, it.y, it.w, it.h);
-  tmp.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'export.png';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }, 'image/png');
-});
+  const blob = await exportCanvasToBlob(outC, { mime, quality });
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `export.${ext}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
-// Export selected object as JPG
-if (exportSelectedJpgBtn) exportSelectedJpgBtn.addEventListener('click', () => {
-  const sel = objects.selected;
-  if (!sel) return;
+if (exportBtn) exportBtn.addEventListener('click', () => { doExportSelectedAware(); });
+
+// Explicit selected export button (uses same format selector)
+if (exportSelectedJpgBtn) exportSelectedJpgBtn.addEventListener('click', async () => {
+  const sel = objects.selected; if (!sel) return;
+  const { mime, ext, quality } = getExportFormat();
   const outC = document.createElement('canvas');
-  // Export the selected object's content at its intrinsic (crop) resolution
-  outC.width = Math.max(1, Math.round(sel.sw));
-  outC.height = Math.max(1, Math.round(sel.sh));
+  const w = Math.max(1, Math.round(sel.w));
+  const h = Math.max(1, Math.round(sel.h));
+  outC.width = w; outC.height = h;
   const octx = outC.getContext('2d');
-  octx.drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, outC.width, outC.height);
-  outC.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'selected.jpg';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }, 'image/jpeg', 0.92);
+  if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
+  octx.drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, w, h);
+  const blob = await exportCanvasToBlob(outC, { mime, quality });
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `selected.${ext}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
 function updateStatus() {

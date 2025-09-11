@@ -9,14 +9,25 @@ export class Viewport {
     this.docH = 0;
     this.viewW = 0;
     this.viewH = 0;
+    // Desired padding from top/left when content is smaller than the view
+    this.padX = 100;
+    this.padY = 100;
   }
 
   reset(docW, docH, viewW, viewH) {
     this.docW = docW; this.docH = docH; this.viewW = viewW; this.viewH = viewH;
     this.scale = 1;
-    // Center document within view
-    this.tx = Math.floor((viewW - docW) / 2);
-    this.ty = Math.floor((viewH - docH) / 2);
+    // Position with fixed padding if possible
+    if (docW <= viewW) {
+      this.tx = this.padX;
+    } else {
+      this.tx = Math.floor((viewW - docW) / 2);
+    }
+    if (docH <= viewH) {
+      this.ty = this.padY;
+    } else {
+      this.ty = Math.floor((viewH - docH) / 2);
+    }
     this.clamp();
   }
 
@@ -76,7 +87,8 @@ export class Viewport {
     const ch = this.docH * this.scale;
     // Horizontal
     if (cw <= this.viewW) {
-      this.tx = Math.round((this.viewW - cw) / 2);
+      // Keep a fixed left padding when content fits
+      this.tx = this.padX;
     } else {
       const minTx = Math.round(this.viewW - cw);
       const maxTx = 0;
@@ -85,7 +97,8 @@ export class Viewport {
     }
     // Vertical
     if (ch <= this.viewH) {
-      this.ty = Math.round((this.viewH - ch) / 2);
+      // Keep a fixed top padding when content fits
+      this.ty = this.padY;
     } else {
       const minTy = Math.round(this.viewH - ch);
       const maxTy = 0;
