@@ -20,24 +20,27 @@
         <details class="menu">
           <summary>File</summary>
           <div class="menu-panel horizontal">
-            <label class="menu-item">
+            <label class="menu-item" title="Open images (Ctrl/Cmd+O)">
               <input id="fileInput" type="file" accept="image/*" multiple hidden />
-              <span>Load Image…</span>
+              <span>
+              
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" style="margin-left:6px;opacity:.9">
+                <path fill="currentColor" d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm7 1.5V8h5.5L13 3.5Z"/>
+              </svg>  Open
+              </span>
+              
             </label>
-            <div class="menu-row" style="margin:0 8px 0 0;">
-              <label style="width:auto;">Format</label>
+            <div style="flex:1 1 auto"></div>
+            <div class="menu-row" style="gap:8px; margin:0; align-items:center;">
+              <select id="exportAction" class="input">
+                <option value="" selected disabled>Export</option>
+                <option value="canvas">Canvas</option>
+                <option value="selected">Selected</option>
+              </select>
               <select id="exportFormat" class="input">
                 <option value="jpeg" selected>JPEG</option>
                 <option value="png">PNG</option>
                 <option value="webp">WEBP</option>
-              </select>
-            </div>
-            <div class="menu-row" style="margin:0 8px 0 0;">
-              <label style="width:auto;">Export</label>
-              <select id="exportAction" class="input">
-                <option value="" selected disabled>Export…</option>
-                <option value="canvas">Canvas</option>
-                <option value="selected">Selected</option>
               </select>
             </div>
           </div>

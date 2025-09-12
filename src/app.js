@@ -108,6 +108,14 @@ function applyHandleSize() {
 applyHandleSize();
 window.addEventListener('resize', () => { applyHandleSize(); render(); });
 
+// Quick open shortcut: Ctrl/Cmd+O to trigger file picker
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'o' || e.key === 'O')) {
+    e.preventDefault();
+    if (fileInput) fileInput.click();
+  }
+});
+
 const persist = debounce(() => saveState(doc, { scale: viewport.scale, tx: viewport.tx, ty: viewport.ty }, objects), 300);
 
 // Objects action history (for undo/redo of move/resize/crop/add)
