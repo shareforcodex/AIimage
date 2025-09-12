@@ -190,7 +190,7 @@ canvas {
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 12px;
-  pointer-events: none;
+  pointer-events: auto; /* enable clicks for interactive parts */
 }
 
 .quick-zoom {
@@ -382,3 +382,32 @@ canvas {
   color: var(--muted);
   font-size: 12px;
 }
+
+/* Size popover */
+.size-popover {
+  position: fixed;
+  right: 12px;
+  bottom: 64px;
+  min-width: 260px;
+  max-width: 320px;
+  background: rgba(0,0,0,0.9);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 25;
+}
+.size-popover__title {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.size-popover__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+.size-popover__row.presets { flex-wrap: wrap; }
+.size-popover__row.presets .btn.small { padding: 2px 6px; }
+.size-popover__error { color: #ffb3b3; font-size: 12px; min-height: 16px; }

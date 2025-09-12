@@ -271,6 +271,18 @@
       </div>
     </main>
 
+    <!-- Size popover for quick resize -->
+    <div id="sizePopover" class="size-popover" hidden>
+      <div class="size-popover__title" id="sizePopoverTitle">Resize</div>
+      <div class="size-popover__row presets" id="sizePresets"></div>
+      <div class="size-popover__row">
+        <input id="sizeInput" class="input" type="text" placeholder="e.g. 1024x1024 or 800,600" />
+        <button id="applySizeQuick" class="btn small">Apply</button>
+        <button id="cancelSizeQuick" class="btn small">Cancel</button>
+      </div>
+      <div id="sizeError" class="size-popover__error" role="alert" aria-live="polite"></div>
+    </div>
+
     <script type="module" src="./src/app.js"></script>
   </body>
   </html>

@@ -61,6 +61,13 @@ const exportFormatSel = document.getElementById('exportFormat');
 const exportActionSel = document.getElementById('exportAction');
 const keepAspect = document.getElementById('keepAspect');
 const statusBar = document.getElementById('statusBar');
+const sizePopover = document.getElementById('sizePopover');
+const sizePresetsEl = document.getElementById('sizePresets');
+const sizePopoverTitle = document.getElementById('sizePopoverTitle');
+const sizeInput = document.getElementById('sizeInput');
+const applySizeQuick = document.getElementById('applySizeQuick');
+const cancelSizeQuick = document.getElementById('cancelSizeQuick');
+const sizeError = document.getElementById('sizeError');
 
 // Text tools
 const textContent = document.getElementById('textContent');
@@ -1124,8 +1131,85 @@ function updateStatus() {
     selDim = `${w}×${h}`;
   }
   const zoom = `${Math.round(viewport.scale * 100)}%`;
-  statusBar.textContent = selDim ? `${canvasDim}  •  ${selDim}  •  ${zoom}` : `${canvasDim}  •  ${zoom}`;
+  // Render interactive spans for canvas and object size
+  const parts = [];
+  parts.push(`<button class="linkish" id="statusCanvas">${canvasDim}</button>`);
+  if (selDim) parts.push(`<button class="linkish" id="statusObject">${selDim}</button>`);
+  parts.push(`<span id="statusZoom">${zoom}</span>`);
+  statusBar.innerHTML = parts.join('  •  ');
+  // Attach click handlers after render
+  const sc = document.getElementById('statusCanvas');
+  const so = document.getElementById('statusObject');
+  if (sc) sc.onclick = () => openSizePopover('canvas');
+  if (so) so.onclick = () => openSizePopover('object');
 }
+
+// Styling helper for inline link-like buttons in status
+const styleTag = document.createElement('style');
+styleTag.textContent = `.status-bar .linkish{appearance:none;border:none;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer;text-decoration:underline dotted 1px rgba(255,255,255,.4);} .status-bar .linkish:hover{opacity:.9}`;
+document.head.appendChild(styleTag);
+
+let popoverTarget = null; // 'canvas' | 'object' | null
+function openSizePopover(target) {
+  popoverTarget = target;
+  if (!sizePopover || !sizePresetsEl) return;
+  // Title and presets per target
+  sizePopoverTitle.textContent = target === 'canvas' ? 'Resize Canvas' : 'Resize Selected';
+  sizePresetsEl.innerHTML = '';
+  const mkBtn = (label, w, h) => {
+    const b = document.createElement('button');
+    b.className = 'btn small';
+    b.textContent = label;
+    b.addEventListener('click', () => applyParsedSize(w, h));
+    return b;
+  };
+  const presets = target === 'canvas'
+    ? [[1024,1024],[1024,1536],[1536,1024]]
+    : [[32,32],[64,64],[128,128],[1024,1024]];
+  for (const [w,h] of presets) sizePresetsEl.appendChild(mkBtn(`${w}×${h}`, w, h));
+  sizeError.textContent = '';
+  sizeInput.value = '';
+  sizePopover.hidden = false;
+}
+
+function closeSizePopover() {
+  popoverTarget = null;
+  if (sizePopover) sizePopover.hidden = true;
+}
+
+function parseSize(text) {
+  if (!text) return null;
+  const s = String(text).trim().toLowerCase().replace(/×/g,'x');
+  const sepMatch = s.match(/^(\d+)\s*[x,\s]\s*(\d+)$/);
+  if (!sepMatch) return null;
+  const w = Math.max(1, parseInt(sepMatch[1], 10));
+  const h = Math.max(1, parseInt(sepMatch[2], 10));
+  if (!isFinite(w) || !isFinite(h) || w < 1 || h < 1) return null;
+  return { w, h };
+}
+
+function applyParsedSize(w, h) {
+  if (popoverTarget === 'canvas') {
+    setCanvasSize(w, h);
+    closeSizePopover();
+  } else if (popoverTarget === 'object') {
+    resizeSelectedObjectTo(w, h);
+    closeSizePopover();
+  }
+}
+
+if (applySizeQuick) applySizeQuick.addEventListener('click', () => {
+  const parsed = parseSize(sizeInput && sizeInput.value);
+  if (!parsed) { if (sizeError) sizeError.textContent = 'Enter size like 1024x1024 or 800,600'; return; }
+  applyParsedSize(parsed.w, parsed.h);
+});
+if (cancelSizeQuick) cancelSizeQuick.addEventListener('click', () => closeSizePopover());
+// Close on Escape or outside click
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSizePopover(); });
+window.addEventListener('mousedown', (e) => {
+  if (!sizePopover || sizePopover.hidden) return;
+  if (!sizePopover.contains(e.target) && !(statusBar && statusBar.contains(e.target))) closeSizePopover();
+});
 
 // Text: create canvas for text and add as object
 function createTextCanvas(text, { size = 48, color = '#ffffff', bold = false, italic = false, font = 'Arial' } = {}) {
