@@ -39,6 +39,8 @@ const flipV = document.getElementById('flipV');
 const zoomInBtn = document.getElementById('zoomIn');
 const zoomOutBtn = document.getElementById('zoomOut');
 const zoomResetBtn = document.getElementById('zoomReset');
+const quickZoomInBtn = document.getElementById('quickZoomIn');
+const quickZoomOutBtn = document.getElementById('quickZoomOut');
 
 const brushToggle = document.getElementById('brushToggle');
 const brushColor = document.getElementById('brushColor');
@@ -839,6 +841,9 @@ function updateZoomLabel() { if (zoomResetBtn) zoomResetBtn.textContent = `${Mat
 if (zoomInBtn) zoomInBtn.addEventListener('click', () => { viewport.zoomAt(1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); });
 if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => { viewport.zoomAt(1 / 1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); });
 if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => { viewport.reset(doc.width, doc.height, canvas.width, canvas.height); updateZoomLabel(); render(); });
+// Quick zoom buttons near status bar
+if (quickZoomInBtn) quickZoomInBtn.addEventListener('click', () => { viewport.zoomAt(1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); });
+if (quickZoomOutBtn) quickZoomOutBtn.addEventListener('click', () => { viewport.zoomAt(1 / 1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); });
 
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
@@ -1110,9 +1115,16 @@ if (exportActionSel) exportActionSel.addEventListener('change', async () => {
 
 function updateStatus() {
   if (!statusBar) return;
-  const dim = `${canvas.width}×${canvas.height}`;
+  const canvasDim = `${canvas.width}×${canvas.height}`;
+  let selDim = '';
+  if (objects && objects.selected) {
+    const sel = objects.selected;
+    const w = Math.max(1, Math.round(sel.w));
+    const h = Math.max(1, Math.round(sel.h));
+    selDim = `${w}×${h}`;
+  }
   const zoom = `${Math.round(viewport.scale * 100)}%`;
-  statusBar.textContent = `${dim}  •  Zoom ${zoom}`;
+  statusBar.textContent = selDim ? `${canvasDim}  •  ${selDim}  •  ${zoom}` : `${canvasDim}  •  ${zoom}`;
 }
 
 // Text: create canvas for text and add as object
