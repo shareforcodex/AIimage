@@ -1168,7 +1168,7 @@ function openSizePopover(target) {
     : [[32,32],[64,64],[128,128],[1024,1024]];
   for (const [w,h] of presets) sizePresetsEl.appendChild(mkBtn(`${w}×${h}`, w, h));
   sizeError.textContent = '';
-  sizeInput.value = '';
+  // Keep previous input so user can reuse/adjust it; do not clear
   sizePopover.hidden = false;
 }
 
