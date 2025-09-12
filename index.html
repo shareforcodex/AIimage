@@ -49,6 +49,11 @@
         <details class="menu">
           <summary>Edit</summary>
           <div class="menu-panel horizontal">
+            <div class="menu-row">
+              <label class="menu-item menu-check" title="Select multiple objects for batch actions">
+                <input id="selectMode" type="checkbox" /> Select Mode
+              </label>
+            </div>
             <button id="undoBtn" class="menu-item" title="Undo (Ctrl/Cmd+Z)">Undo</button>
             <button id="redoBtn" class="menu-item" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
             <hr />
@@ -284,10 +289,7 @@
       <div id="sizeError" class="size-popover__error" role="alert" aria-live="polite"></div>
     </div>
 
-    <!-- Top-right select mode toggle -->
-    <div class="top-right-controls">
-      <label class="btn small"><input id="selectMode" type="checkbox" /> Select Mode</label>
-    </div>
+    
 
     <script type="module" src="./src/app.js"></script>
   </body>

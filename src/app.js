@@ -119,6 +119,21 @@ function applyHandleSize() {
 applyHandleSize();
 window.addEventListener('resize', () => { applyHandleSize(); render(); });
 
+// Select Mode lifecycle: keep behavior predictable
+if (selectMode) {
+  selectMode.addEventListener('change', () => {
+    if (selectMode.checked) {
+      // When enabling, seed the set with the current selection (if any)
+      multiSelected = new Set(multiSelected); // ensure it's a Set instance
+      if (objects.selected) multiSelected.add(objects.selected.id);
+    } else {
+      // When disabling, clear multi selection
+      multiSelected.clear();
+    }
+    render();
+  });
+}
+
 // Quick open shortcut: Ctrl/Cmd+O to trigger file picker
 window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'o' || e.key === 'O')) {
@@ -216,7 +231,10 @@ function render() {
   ctx.setLineDash([]);
   ctx.restore();
   crop.draw(ctx, viewport, canvas);
-  objects.drawSelection(ctx, viewport);
+  // In Select Mode, suppress single selection box when multi-selected exists
+  if (!(selectMode && selectMode.checked && multiSelected.size)) {
+    objects.drawSelection(ctx, viewport);
+  }
   // Draw multi selections outlines if select mode
   if (selectMode && selectMode.checked && multiSelected.size) {
     ctx.save();
@@ -393,18 +411,28 @@ if (objectSizePreset) {
     // Always reflect preset into custom inputs
     if (objCustomW) objCustomW.value = String(w);
     if (objCustomH) objCustomH.value = String(h);
-    // If there is a selection, also apply resize
-    const sel = objects.selected;
-    if (sel) resizeSelectedObjectTo(w, h);
+    // Apply to multi-select if enabled; otherwise single selection
+    const hasMulti = selectMode && selectMode.checked && multiSelected.size > 0;
+    if (hasMulti) {
+      resizeSelectedObjectsTo(w, h);
+    } else {
+      const sel = objects.selected;
+      if (sel) resizeSelectedObjectTo(w, h);
+    }
   });
 }
 if (applyObjSizeBtn) {
   applyObjSizeBtn.addEventListener('click', () => {
-    const sel = objects.selected;
-    if (!sel) { window.alert('Select an image object first.'); return; }
     const w = Number(objCustomW && objCustomW.value);
     const h = Number(objCustomH && objCustomH.value);
     if (!w || !h) return;
+    const hasMulti = selectMode && selectMode.checked && multiSelected.size > 0;
+    if (hasMulti) {
+      resizeSelectedObjectsTo(w, h);
+      return;
+    }
+    const sel = objects.selected;
+    if (!sel) { window.alert('Select an image object first.'); return; }
     resizeSelectedObjectTo(w, h);
   });
 }
@@ -1136,8 +1164,33 @@ if (exportActionSel) exportActionSel.addEventListener('change', async () => {
   if (val === 'canvas') {
     await exportFullCanvas();
   } else if (val === 'selected') {
-    if (objects.selected) await exportSelectedOnly();
-    // else no-op
+    const hasMulti = selectMode && selectMode.checked && multiSelected.size > 0;
+    if (hasMulti) {
+      // Export each selected object one by one
+      const { mime, ext, quality } = getExportFormat();
+      for (const id of Array.from(multiSelected)) {
+        const it = objects.getById(id); if (!it) continue;
+        const outC = document.createElement('canvas');
+        const w = Math.max(1, Math.round(it.w));
+        const h = Math.max(1, Math.round(it.h));
+        outC.width = w; outC.height = h;
+        const octx = outC.getContext('2d');
+        if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
+        octx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, 0, 0, w, h);
+        const blob = await exportCanvasToBlob(outC, { mime, quality });
+        if (!blob) continue;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const sizeKB = Math.round((blob.size || 0) / 1024);
+        const stamp = dateStamp();
+        a.href = url; a.download = `selected-${outC.width}x${outC.height}-${sizeKB}KB-${stamp}-${id}.${ext}`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 800);
+      }
+    } else if (objects.selected) {
+      await exportSelectedOnly();
+    }
+    // else no-op if nothing selected
   }
   // Reset to placeholder "Export…" for next time
   exportActionSel.value = '';
