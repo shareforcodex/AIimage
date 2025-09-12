@@ -411,3 +411,19 @@ canvas {
 .size-popover__row.presets { flex-wrap: wrap; }
 .size-popover__row.presets .btn.small { padding: 2px 6px; }
 .size-popover__error { color: #ffb3b3; font-size: 12px; min-height: 16px; }
+
+/* Top-right select mode control */
+.top-right-controls {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+}
+.top-right-controls .btn.small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.top-right-controls input[type="checkbox"] {
+  margin: 0;
+}

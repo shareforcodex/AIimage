@@ -279,8 +279,14 @@
         <input id="sizeInput" class="input" type="text" placeholder="e.g. 1024x1024 or 800,600" />
         <button id="applySizeQuick" class="btn small">Apply</button>
         <button id="cancelSizeQuick" class="btn small">Cancel</button>
+        <button id="exportSelectedBtn" class="btn small" title="Export selected objects">Export Sel</button>
       </div>
       <div id="sizeError" class="size-popover__error" role="alert" aria-live="polite"></div>
+    </div>
+
+    <!-- Top-right select mode toggle -->
+    <div class="top-right-controls">
+      <label class="btn small"><input id="selectMode" type="checkbox" /> Select Mode</label>
     </div>
 
     <script type="module" src="./src/app.js"></script>

@@ -61,6 +61,8 @@ const exportFormatSel = document.getElementById('exportFormat');
 const exportActionSel = document.getElementById('exportAction');
 const keepAspect = document.getElementById('keepAspect');
 const statusBar = document.getElementById('statusBar');
+const selectMode = document.getElementById('selectMode');
+let multiSelected = new Set();
 const sizePopover = document.getElementById('sizePopover');
 const sizePresetsEl = document.getElementById('sizePresets');
 const sizePopoverTitle = document.getElementById('sizePopoverTitle');
@@ -215,6 +217,19 @@ function render() {
   ctx.restore();
   crop.draw(ctx, viewport, canvas);
   objects.drawSelection(ctx, viewport);
+  // Draw multi selections outlines if select mode
+  if (selectMode && selectMode.checked && multiSelected.size) {
+    ctx.save();
+    viewport.apply(ctx);
+    ctx.strokeStyle = '#4dabf7';
+    ctx.lineWidth = 1 / (viewport.scale || 1);
+    ctx.setLineDash([4 / (viewport.scale || 1), 4 / (viewport.scale || 1)]);
+    for (const id of multiSelected) {
+      const it = objects.getById(id); if (!it) continue;
+      ctx.strokeRect(it.x + 0.5 / (viewport.scale || 1), it.y + 0.5 / (viewport.scale || 1), it.w, it.h);
+    }
+    ctx.restore();
+  }
   updateStatus();
 }
 
@@ -730,6 +745,17 @@ canvas.addEventListener('pointerdown', (e) => {
   // Objects interactions if not brush
   if (!isBrush) {
     const ip = getImagePoint(e);
+    // In Select Mode: toggle selection on click without dragging
+    if (selectMode && selectMode.checked) {
+      const hit = objects.hitTest(ip);
+      if (hit) {
+        if (multiSelected.has(hit)) multiSelected.delete(hit); else multiSelected.add(hit);
+        objects.selectedId = hit; // keep single selected for compatibility
+        updateEditMenuRemoveState();
+        render();
+      }
+      return;
+    }
     const prevSel = objects.selected ? objects.selected.id : null;
     const acted = objects.beginInteraction(ip);
     if (acted) {
@@ -1124,7 +1150,10 @@ function updateStatus() {
   if (!statusBar) return;
   const canvasDim = `${canvas.width}×${canvas.height}`;
   let selDim = '';
-  if (objects && objects.selected) {
+  const hasMulti = selectMode && selectMode.checked && multiSelected.size > 0;
+  if (hasMulti) {
+    selDim = `${multiSelected.size} selected`;
+  } else if (objects && objects.selected) {
     const sel = objects.selected;
     const w = Math.max(1, Math.round(sel.w));
     const h = Math.max(1, Math.round(sel.h));
@@ -1193,7 +1222,12 @@ function applyParsedSize(w, h) {
     setCanvasSize(w, h);
     closeSizePopover();
   } else if (popoverTarget === 'object') {
-    resizeSelectedObjectTo(w, h);
+    const hasMulti = selectMode && selectMode.checked && multiSelected.size > 0;
+    if (hasMulti) {
+      resizeSelectedObjectsTo(w, h);
+    } else {
+      resizeSelectedObjectTo(w, h);
+    }
     closeSizePopover();
   }
 }
@@ -1204,6 +1238,63 @@ if (applySizeQuick) applySizeQuick.addEventListener('click', () => {
   applyParsedSize(parsed.w, parsed.h);
 });
 if (cancelSizeQuick) cancelSizeQuick.addEventListener('click', () => closeSizePopover());
+const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+if (exportSelectedBtn) exportSelectedBtn.addEventListener('click', async () => {
+  const { mime, ext, quality } = getExportFormat();
+  const ids = (selectMode && selectMode.checked && multiSelected.size > 0)
+    ? Array.from(multiSelected)
+    : (objects.selected ? [objects.selected.id] : []);
+  if (!ids.length) { if (sizeError) sizeError.textContent = 'No selection to export'; return; }
+  for (const id of ids) {
+    const it = objects.getById(id); if (!it) continue;
+    const outC = document.createElement('canvas');
+    const w = Math.max(1, Math.round(it.w));
+    const h = Math.max(1, Math.round(it.h));
+    outC.width = w; outC.height = h;
+    const octx = outC.getContext('2d');
+    if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
+    octx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, 0, 0, w, h);
+    const blob = await exportCanvasToBlob(outC, { mime, quality });
+    if (!blob) continue;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const sizeKB = Math.round((blob.size || 0) / 1024);
+    const stamp = dateStamp();
+    a.href = url; a.download = `selected-${outC.width}x${outC.height}-${sizeKB}KB-${stamp}-${id}.${ext}`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 800);
+  }
+});
+
+function resizeSelectedObjectsTo(w, h) {
+  const beforeObjects = cloneAllItems();
+  const ids = Array.from(multiSelected);
+  for (const id of ids) {
+    const sel = objects.getById(id);
+    if (!sel) continue;
+    const tw = clampPosInt(w);
+    const th = clampPosInt(h);
+    const srcW = sel.sw, srcH = sel.sh;
+    const srcC = document.createElement('canvas');
+    srcC.width = srcW; srcC.height = srcH;
+    srcC.getContext('2d').drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, srcW, srcH);
+    const outC = document.createElement('canvas');
+    outC.width = tw; outC.height = th;
+    outC.getContext('2d').drawImage(srcC, 0, 0, srcW, srcH, 0, 0, tw, th);
+    const cx = sel.x + sel.w / 2;
+    const cy = sel.y + sel.h / 2;
+    sel.canvas = outC;
+    sel.sx = 0; sel.sy = 0; sel.sw = tw; sel.sh = th;
+    sel.w = tw; sel.h = th;
+    sel.x = Math.round(cx - tw / 2);
+    sel.y = Math.round(cy - th / 2);
+  }
+  render();
+  const afterObjects = cloneAllItems();
+  objHistory.undo.push({ type: 'replace', before: beforeObjects, after: afterObjects });
+  objHistory.redo.length = 0; updateUndoRedoState();
+  persist();
+}
 // Close on Escape or outside click
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSizePopover(); });
 window.addEventListener('mousedown', (e) => {
