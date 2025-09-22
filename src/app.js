@@ -245,8 +245,8 @@ function isCoarsePointer() {
 function desiredHandleSize() {
   const smallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 768;
   const coarse = isCoarsePointer();
-  const base = 20; // default desktop size
-  const touchSize = 40; // larger, easier to hit
+  const base = 24; // slightly larger desktop size
+  const touchSize = 50; // much larger on touch for easy tapping
   let size = (coarse || smallViewport) ? touchSize : base;
   // Slight bump on very high DPR screens for comfort
   const dpr = window.devicePixelRatio || 1;
@@ -1064,12 +1064,29 @@ clearCanvas.addEventListener('click', () => {
 
 // Zoom controls
 function updateZoomLabel() { if (zoomResetBtn) zoomResetBtn.textContent = `${Math.round(viewport.scale * 100)}%`; }
-if (zoomInBtn) zoomInBtn.addEventListener('click', () => { viewport.zoomAt(1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); });
-if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => { viewport.zoomAt(1 / 1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); });
+function doZoomIn() { viewport.zoomAt(1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); }
+function doZoomOut() { viewport.zoomAt(1 / 1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); }
+if (zoomInBtn) {
+  zoomInBtn.addEventListener('click', doZoomIn);
+  zoomInBtn.addEventListener('touchstart', (e) => { e.preventDefault(); doZoomIn(); }, { passive: false });
+}
+if (zoomOutBtn) {
+  zoomOutBtn.addEventListener('click', doZoomOut);
+  zoomOutBtn.addEventListener('touchstart', (e) => { e.preventDefault(); doZoomOut(); }, { passive: false });
+}
 if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => { viewport.reset(doc.width, doc.height, canvas.width, canvas.height); updateZoomLabel(); render(); });
 // Quick zoom buttons near status bar
-if (quickZoomInBtn) quickZoomInBtn.addEventListener('click', () => { viewport.zoomAt(1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); });
-if (quickZoomOutBtn) quickZoomOutBtn.addEventListener('click', () => { viewport.zoomAt(1 / 1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); });
+if (quickZoomInBtn) {
+  quickZoomInBtn.addEventListener('click', doZoomIn);
+  // Prevent double-tap zoom on mobile
+  quickZoomInBtn.addEventListener('touchstart', (e) => { e.preventDefault(); doZoomIn(); }, { passive: false });
+}
+if (quickZoomOutBtn) {
+  quickZoomOutBtn.addEventListener('click', doZoomOut);
+  // Prevent double-tap zoom on mobile
+  quickZoomOutBtn.addEventListener('touchstart', (e) => { e.preventDefault(); doZoomOut(); }, { passive: false });
+}
+// (Removed duplicate handlers)
 
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();

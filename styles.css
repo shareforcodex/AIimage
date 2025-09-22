@@ -99,6 +99,30 @@ body {
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
+  touch-action: manipulation; /* prevent double-tap zoom on mobile */
+}
+
+.icon-btn {
+  appearance: none;
+  border: 1px solid #000;
+  background: var(--btn);
+  color: var(--text);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: manipulation; /* prevent double-tap zoom */
+}
+
+.quick-zoom .btn.small {
+  width: 28px;
+  height: 24px;
+  line-height: 1;
+  padding: 0;
+  touch-action: manipulation; /* prevent double-tap zoom */
 }
 
 .btn:hover {
@@ -207,6 +231,7 @@ canvas {
   height: 24px;
   line-height: 1;
   padding: 0;
+  touch-action: manipulation; /* avoid double-tap zoom */
 }
 
 /* Action bar select-mode icon toggle */
