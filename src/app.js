@@ -1141,13 +1141,13 @@ async function exportFullCanvas() {
     const { x, y, w, h } = crop.rect;
     out.width = Math.max(1, Math.round(w));
     out.height = Math.max(1, Math.round(h));
-    if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, out.width, out.height); }
+    if (mime === 'image/jpeg') { octx.fillStyle = '#000000'; octx.fillRect(0, 0, out.width, out.height); }
     // Copy exactly the visible crop region from the scene
     octx.drawImage(scene, x, y, w, h, 0, 0, out.width, out.height);
   } else {
     out.width = scene.width;
     out.height = scene.height;
-    if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, out.width, out.height); }
+    if (mime === 'image/jpeg') { octx.fillStyle = '#000000'; octx.fillRect(0, 0, out.width, out.height); }
     octx.drawImage(scene, 0, 0);
   }
 
@@ -1173,7 +1173,7 @@ async function exportSelectedOnly() {
   const h = Math.max(1, Math.round(sel.h));
   outC.width = w; outC.height = h;
   const octx = outC.getContext('2d');
-  if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
+  if (mime === 'image/jpeg') { octx.fillStyle = '#000000'; octx.fillRect(0, 0, w, h); }
   octx.drawImage(sel.canvas, sel.sx, sel.sy, sel.sw, sel.sh, 0, 0, w, h);
   const blob = await exportCanvasToBlob(outC, { mime, quality });
   if (!blob) return;
@@ -1376,7 +1376,7 @@ if (exportSelectedBtn) exportSelectedBtn.addEventListener('click', async () => {
     const h = Math.max(1, Math.round(it.h));
     outC.width = w; outC.height = h;
     const octx = outC.getContext('2d');
-    if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
+    if (mime === 'image/jpeg') { octx.fillStyle = '#000000'; octx.fillRect(0, 0, w, h); }
     octx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, 0, 0, w, h);
     const blob = await exportCanvasToBlob(outC, { mime, quality });
     if (!blob) continue;
