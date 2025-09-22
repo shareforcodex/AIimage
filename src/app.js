@@ -233,7 +233,8 @@ const viewport = new Viewport();
 const crop = new CropMarquee();
 const objects = new ObjectsManager();
 
-// Improve usability on touch/small screens by enlarging handles
+// Improve usability on touch devices by enlarging handles
+let observedTouch = ("ontouchstart" in window) || (navigator.maxTouchPoints || 0) > 0;
 function isCoarsePointer() {
   try {
     return (
@@ -243,11 +244,11 @@ function isCoarsePointer() {
   } catch (_) { return (navigator.maxTouchPoints || 0) > 0; }
 }
 function desiredHandleSize() {
-  const smallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 768;
   const coarse = isCoarsePointer();
-  const base = 24; // slightly larger desktop size
-  const touchSize = 50; // much larger on touch for easy tapping
-  let size = (coarse || smallViewport) ? touchSize : base;
+  const touch = observedTouch || coarse; // prioritize actual touch presence
+  const base = 24; // desktop size
+  const touchSize = 56; // larger for touch
+  let size = touch ? touchSize : base;
   // Slight bump on very high DPR screens for comfort
   const dpr = window.devicePixelRatio || 1;
   if (size >= touchSize && dpr > 2) size = Math.round(size * 1.1);
@@ -259,6 +260,9 @@ function applyHandleSize() {
   objects.handleSize = hs;
 }
 applyHandleSize();
+// Upgrade to touch sizing as soon as a touch is detected at runtime
+window.addEventListener('touchstart', () => { if (!observedTouch) { observedTouch = true; applyHandleSize(); scheduleRender(); } }, { passive: true });
+canvas.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch' && !observedTouch) { observedTouch = true; applyHandleSize(); scheduleRender(); } });
 window.addEventListener('resize', () => { applyHandleSize(); render(); });
 
 // Select Mode lifecycle: keep behavior predictable
@@ -351,6 +355,17 @@ function doObjRedo() {
   }
 }
 
+let _needsRender = false;
+let fastMode = false; // simplify rendering during continuous interactions
+function scheduleRender() {
+  if (_needsRender) return;
+  _needsRender = true;
+  requestAnimationFrame(() => {
+    _needsRender = false;
+    render();
+  });
+}
+
 function render() {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -364,25 +379,30 @@ function render() {
   viewport.apply(ctx);
   const s = viewport.scale || 1;
   const px = 1 / s;
-  const thick = 3 * px; // thicker, scale-stable
-  const dash = [8 * px, 4 * px];
+  const thick = 3 * px;
   const x = 0.5 * px, y = 0.5 * px;
   const w = doc.width - 1 * px, h = doc.height - 1 * px;
-  // Backing stroke for contrast
-  ctx.setLineDash(dash);
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-  ctx.lineWidth = thick + 2 * px;
-  ctx.strokeRect(x, y, w, h);
-  // Foreground accent stroke
-  ctx.strokeStyle = '#4dabf7';
-  ctx.lineWidth = thick;
-  ctx.strokeRect(x, y, w, h);
-  ctx.setLineDash([]);
+  if (!fastMode) {
+    const dash = [8 * px, 4 * px];
+    ctx.setLineDash(dash);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.lineWidth = thick + 2 * px;
+    ctx.strokeRect(x, y, w, h);
+    ctx.strokeStyle = '#4dabf7';
+    ctx.lineWidth = thick;
+    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
+  } else {
+    // Simpler boundary in fast mode
+    ctx.strokeStyle = '#2e2e2e';
+    ctx.lineWidth = 1 * px;
+    ctx.strokeRect(x, y, w, h);
+  }
   ctx.restore();
   crop.draw(ctx, viewport, canvas);
   const selScale = viewport.scale || 1;
   const green = '#00EE90'; // light green
-  const selDash = [4 / selScale, 4 / selScale];
+  const selDash = fastMode ? [] : [4 / selScale, 4 / selScale];
   // Selection rendering
   if (selectMode && selectMode.checked) {
     // Single selection (no multi set yet): draw thick light green
@@ -413,7 +433,8 @@ function render() {
     }
     ctx.restore();
   }
-  updateStatus();
+  // Avoid DOM writes during fast interactions to keep FPS high
+  if (!fastMode) updateStatus();
 }
 
 function snapshot() {
@@ -903,7 +924,7 @@ function drawLine(a, b) {
     ctx2.moveTo(p1.x, p1.y);
     ctx2.lineTo(p2.x, p2.y);
     ctx2.stroke();
-    render();
+    scheduleRender();
     return;
   }
 
@@ -916,7 +937,7 @@ function drawLine(a, b) {
   dctx.moveTo(a.x, a.y);
   dctx.lineTo(b.x, b.y);
   dctx.stroke();
-  render();
+  scheduleRender();
 }
 
 // Pointer interactions
@@ -928,10 +949,12 @@ canvas.addEventListener('pointerdown', (e) => {
     const ip = getImagePoint(e);
     const mode = crop.hitTest(ip) || 'move';
     crop.beginDrag(mode, ip);
+    fastMode = true;
     return;
   }
   if (spaceKey || e.button === 1) {
     isPanning = true;
+    fastMode = true;
     lastPoint = getCanvasPoint(e);
     return;
   }
@@ -958,16 +981,18 @@ canvas.addEventListener('pointerdown', (e) => {
       // If Add menu is open and selected is text, sync inputs
       syncAddPanelFromSelection();
       updateEditMenuRemoveState();
-      render();
+      fastMode = true;
+      scheduleRender();
       return;
     } else {
       // If selection was cleared, re-render to hide selection box
       const nowSel = objects.selected ? objects.selected.id : null;
-      if (prevSel && !nowSel) { render(); updateEditMenuRemoveState(); }
+      if (prevSel && !nowSel) { scheduleRender(); updateEditMenuRemoveState(); }
     }
   }
   if (isBrush) {
     isDrawing = true;
+    fastMode = true;
     lastPoint = getImagePoint(e);
     // Decide draw target: topmost object under pointer, otherwise background doc
     const hitId = objects.hitTest(lastPoint);
@@ -987,19 +1012,19 @@ canvas.addEventListener('pointermove', (e) => {
   if (crop.drag) {
     const ip = getImagePoint(e);
     crop.updateDrag(ip, { x: 0, y: 0, w: doc.width, h: doc.height });
-    render();
+    scheduleRender();
     return;
   }
   if (isPanning) {
     const p = getCanvasPoint(e);
     viewport.panBy(p.x - lastPoint.x, p.y - lastPoint.y);
     lastPoint = p;
-    render();
+    scheduleRender();
     return;
   }
   if (objects.drag) {
     const ip = getImagePoint(e);
-    if (objects.updateInteraction(ip)) render();
+    if (objects.updateInteraction(ip)) scheduleRender();
     return;
   }
   if (!isDrawing) return;
@@ -1040,6 +1065,9 @@ function endStroke() {
     objActionStart = null;
     persist();
   }
+  // turn off fast mode after interactions
+  fastMode = false;
+  scheduleRender();
 }
 canvas.addEventListener('pointerup', endStroke);
 canvas.addEventListener('pointercancel', endStroke);
