@@ -1120,20 +1120,48 @@ function dateStamp() {
 
 async function exportFullCanvas() {
   const { mime, ext, quality } = getExportFormat();
-  const outC = document.createElement('canvas');
-  outC.width = canvas.width; outC.height = canvas.height;
-  const tctx = outC.getContext('2d');
-  if (mime === 'image/jpeg') { tctx.fillStyle = '#ffffff'; tctx.fillRect(0, 0, outC.width, outC.height); }
-  tctx.drawImage(doc, 0, 0);
-  for (const it of objects.items) tctx.drawImage(it.canvas, it.x, it.y, it.w, it.h);
-  const blob = await exportCanvasToBlob(outC, { mime, quality });
+  // 1) Render the full scene (exactly like render()) to an offscreen scene canvas
+  const scene = document.createElement('canvas');
+  scene.width = doc.width;
+  scene.height = doc.height;
+  const sctx = scene.getContext('2d');
+  sctx.clearRect(0, 0, scene.width, scene.height);
+  sctx.drawImage(doc, 0, 0);
+  // Use the same drawing semantics as on-screen rendering
+  for (const it of objects.items) {
+    sctx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, it.x, it.y, it.w, it.h);
+  }
+
+  // 2) Prepare output canvas: full scene or active crop rectangle
+  const out = document.createElement('canvas');
+  const octx = out.getContext('2d');
+  const hasCrop = !!(crop && crop.active && crop.rect && crop.rect.w > 0 && crop.rect.h > 0);
+
+  if (hasCrop) {
+    const { x, y, w, h } = crop.rect;
+    out.width = Math.max(1, Math.round(w));
+    out.height = Math.max(1, Math.round(h));
+    if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, out.width, out.height); }
+    // Copy exactly the visible crop region from the scene
+    octx.drawImage(scene, x, y, w, h, 0, 0, out.width, out.height);
+  } else {
+    out.width = scene.width;
+    out.height = scene.height;
+    if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, out.width, out.height); }
+    octx.drawImage(scene, 0, 0);
+  }
+
+  // 3) Export the output canvas
+  const blob = await exportCanvasToBlob(out, { mime, quality });
   if (!blob) return;
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const sizeKB = Math.round((blob.size || 0) / 1024);
-  const stamp = dateStamp();
-  a.href = url; a.download = `canvas-${outC.width}x${outC.height}-${sizeKB}KB-${stamp}.${ext}`;
-  document.body.appendChild(a); a.click(); a.remove();
+  a.href = url;
+  a.download = `image-${dateStamp()}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -1158,42 +1186,68 @@ async function exportSelectedOnly() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Export based on dropdown selection (Canvas/Selected)
-if (exportActionSel) exportActionSel.addEventListener('change', async () => {
-  const val = exportActionSel.value;
-  if (val === 'canvas') {
+// Handle export events from the dialog
+window.addEventListener('export-canvas', async () => {
+  try {
     await exportFullCanvas();
-  } else if (val === 'selected') {
+  } catch (error) {
+    console.error('Error exporting canvas:', error);
+  }
+});
+
+window.addEventListener('export-selected', async () => {
+  try {
     const hasMulti = selectMode && selectMode.checked && multiSelected.size > 0;
     if (hasMulti) {
       // Export each selected object one by one
       const { mime, ext, quality } = getExportFormat();
       for (const id of Array.from(multiSelected)) {
-        const it = objects.getById(id); if (!it) continue;
+        const it = objects.getById(id); 
+        if (!it) continue;
+        
         const outC = document.createElement('canvas');
         const w = Math.max(1, Math.round(it.w));
         const h = Math.max(1, Math.round(it.h));
-        outC.width = w; outC.height = h;
+        outC.width = w; 
+        outC.height = h;
+        
         const octx = outC.getContext('2d');
-        if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
+        if (mime === 'image/jpeg') { 
+          octx.fillStyle = '#ffffff'; 
+          octx.fillRect(0, 0, w, h); 
+        }
+        
         octx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, 0, 0, w, h);
-        const blob = await exportCanvasToBlob(outC, { mime, quality });
+        
+        // Handle blob creation and download
+        const blob = await new Promise(resolve => {
+          outC.toBlob(blob => resolve(blob), mime, quality);
+        });
+        
         if (!blob) continue;
+        
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        const sizeKB = Math.round((blob.size || 0) / 1024);
+        const sizeKB = Math.round(blob.size / 1024);
         const stamp = dateStamp();
-        a.href = url; a.download = `selected-${outC.width}x${outC.height}-${sizeKB}KB-${stamp}-${id}.${ext}`;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 800);
+        
+        a.href = url;
+        a.download = `selected-${w}x${h}-${sizeKB}KB-${stamp}-${id}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
     } else if (objects.selected) {
       await exportSelectedOnly();
+    } else {
+      // Show message if nothing is selected
+      alert('Please select one or more images to export.');
     }
-    // else no-op if nothing selected
+  } catch (error) {
+    console.error('Error exporting selected items:', error);
   }
-  // Reset to placeholder "Export…" for next time
-  exportActionSel.value = '';
 });
 
 // Explicit selected export button (uses same format selector)
@@ -1246,11 +1300,28 @@ function openSizePopover(target) {
     return b;
   };
   const presets = target === 'canvas'
-    ? [[1024,1024],[1024,1536],[1536,1024]]
-    : [[32,32],[64,64],[128,128],[1024,1024]];
+    ? [
+        [1024,1024], [1024,1536], [1536,1024], 
+        [2000,2000], [2000,4000], [4000,4000], 
+        [4000,8000], [1242,2688], [1668,2388]
+      ]
+    : [
+        [32,32], [64,64], [128,128], [1024,1024],
+        [1242,2688], [1668,2388]
+      ];
   for (const [w,h] of presets) sizePresetsEl.appendChild(mkBtn(`${w}×${h}`, w, h));
+  
+  // Set current dimensions in the input field
+  if (sizeInput) {
+    sizeInput.value = target === 'canvas' 
+      ? `${doc.width}×${doc.height}`
+      : objectsManager.getSelected() 
+        ? `${objectsManager.getSelected().w}×${objectsManager.getSelected().h}`
+        : '';
+    sizeInput.select();
+  }
+  
   sizeError.textContent = '';
-  // Keep previous input so user can reuse/adjust it; do not clear
   sizePopover.hidden = false;
 }
 
