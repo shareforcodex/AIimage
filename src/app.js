@@ -7,6 +7,117 @@ import { ObjectsManager } from './objects.js';
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+// Direct Export UI: show canvas on top, then selected images
+window.addEventListener('export-show-ui', async () => {
+  try {
+    const { mime, ext, quality } = getExportFormat();
+    currentMultiExports = [];
+
+    // 1) Full scene (canvas + objects) as first item
+    const scene = document.createElement('canvas');
+    scene.width = doc.width; scene.height = doc.height;
+    const sctx = scene.getContext('2d');
+    sctx.clearRect(0, 0, scene.width, scene.height);
+    sctx.drawImage(doc, 0, 0);
+    for (const it of objects.items) {
+      sctx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, it.x, it.y, it.w, it.h);
+    }
+    // Output canvas respects JPEG background if needed
+    const out = document.createElement('canvas');
+    const octx = out.getContext('2d');
+    if (mime === 'image/jpeg') {
+      out.width = scene.width; out.height = scene.height;
+      octx.fillStyle = '#000000'; octx.fillRect(0, 0, out.width, out.height);
+      octx.drawImage(scene, 0, 0);
+    } else {
+      out.width = scene.width; out.height = scene.height;
+      if (mime === 'image/png') { /* keep transparency */ }
+      octx.drawImage(scene, 0, 0);
+    }
+    const canvasBlob = await exportCanvasToBlob(out, { mime, quality });
+    if (canvasBlob) {
+      const url = URL.createObjectURL(canvasBlob);
+      const sizeKB = Math.round((canvasBlob.size || 0) / 1024);
+      const filename = `canvas-${out.width}x${out.height}-${sizeKB}KB-${dateStamp()}.${ext}`;
+      currentMultiExports.push({ id: 'canvas', w: out.width, h: out.height, blob: canvasBlob, url, filename });
+    }
+
+    // 2) Selected images (multi or single)
+    const ids = (selectMode && selectMode.checked && multiSelected.size > 0)
+      ? Array.from(multiSelected)
+      : (objects.selected ? [objects.selected.id] : []);
+    for (const id of ids) {
+      const it = objects.getById(id); if (!it) continue;
+      const outC = document.createElement('canvas');
+      const w = Math.max(1, Math.round(it.w));
+      const h = Math.max(1, Math.round(it.h));
+      outC.width = w; outC.height = h;
+      const octx2 = outC.getContext('2d');
+      if (mime === 'image/jpeg') { octx2.fillStyle = '#ffffff'; octx2.fillRect(0, 0, w, h); }
+      octx2.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, 0, 0, w, h);
+      const blob = await exportCanvasToBlob(outC, { mime, quality });
+      if (!blob) continue;
+      const url = URL.createObjectURL(blob);
+      const sizeKB = Math.round((blob.size || 0) / 1024);
+      const filename = `selected-${w}x${h}-${sizeKB}KB-${dateStamp()}-${id}.${ext}`;
+      currentMultiExports.push({ id, w, h, blob, url, filename });
+    }
+
+    // 3) Populate the dialog and show it
+    if (multiExportList && multiExportDialog) {
+      multiExportList.innerHTML = '';
+      for (const item of currentMultiExports) {
+        const wrap = document.createElement('div');
+        wrap.className = 'multi-export-item';
+        const img = document.createElement('img');
+        img.className = 'multi-export-thumb';
+        img.src = item.url;
+        img.alt = `${item.id === 'canvas' ? 'Canvas' : 'Selected'} ${item.w}×${item.h}`;
+        const meta = document.createElement('div');
+        meta.className = 'multi-export-meta';
+        meta.textContent = `${item.id === 'canvas' ? 'Canvas' : 'Selected'} • ${item.w}×${item.h} • ${(Math.round((item.blob.size/1024)*10)/10)} KB`;
+        const link = document.createElement('a');
+        link.className = 'multi-export-link';
+        link.href = item.url; link.textContent = item.filename; link.target = '_blank'; link.rel = 'noopener noreferrer';
+        wrap.appendChild(img); wrap.appendChild(meta); wrap.appendChild(link);
+        multiExportList.appendChild(wrap);
+      }
+      if (downloadAllBtn) {
+        downloadAllBtn.onclick = async () => {
+          try {
+            const JSZipRef = window.JSZip || window.jszip || window.JSzip;
+            if (!JSZipRef) {
+              // Fallback: individual downloads
+              for (const item of currentMultiExports) {
+                const a = document.createElement('a'); a.href = item.url; a.download = item.filename;
+                document.body.appendChild(a); a.click(); a.remove();
+              }
+              return;
+            }
+            const zip = new JSZipRef();
+            for (const item of currentMultiExports) zip.file(item.filename, item.blob);
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(zipBlob);
+            const a = document.createElement('a'); a.href = url; a.download = `export-${dateStamp()}.zip`;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1200);
+          } catch (err) { console.error('ZIP download failed', err); }
+        };
+      }
+      const closeDialog = () => {
+        multiExportDialog.style.display = 'none';
+        for (const item of currentMultiExports) { try { URL.revokeObjectURL(item.url); } catch {} }
+        currentMultiExports = [];
+        multiExportList.innerHTML = '';
+      };
+      if (closeMultiExportBtn) closeMultiExportBtn.onclick = closeDialog;
+      multiExportDialog.style.display = 'flex';
+    }
+  } catch (err) {
+    console.error('Error preparing export UI:', err);
+  }
+});
 // Offscreen document (image space)
 const doc = document.createElement('canvas');
 const dctx = doc.getContext('2d', { willReadFrequently: true });
@@ -71,6 +182,13 @@ const applySizeQuick = document.getElementById('applySizeQuick');
 const cancelSizeQuick = document.getElementById('cancelSizeQuick');
 const sizeError = document.getElementById('sizeError');
 
+// Multi-export dialog elements
+const multiExportDialog = document.getElementById('multiExportDialog');
+const multiExportList = document.getElementById('multiExportList');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const closeMultiExportBtn = document.getElementById('closeMultiExportBtn');
+let currentMultiExports = [];
+
 // Text tools
 const textContent = document.getElementById('textContent');
 const textColor = document.getElementById('textColor');
@@ -121,6 +239,10 @@ window.addEventListener('resize', () => { applyHandleSize(); render(); });
 
 // Select Mode lifecycle: keep behavior predictable
 if (selectMode) {
+  const selectLabel = selectMode.closest('label');
+  const syncSelectLabel = () => {
+    if (selectLabel) selectLabel.classList.toggle('active', !!selectMode.checked);
+  };
   selectMode.addEventListener('change', () => {
     if (selectMode.checked) {
       // When enabling, seed the set with the current selection (if any)
@@ -130,8 +252,11 @@ if (selectMode) {
       // When disabling, clear multi selection
       multiSelected.clear();
     }
+    syncSelectLabel();
     render();
   });
+  // initialize state on load
+  syncSelectLabel();
 }
 
 // Quick open shortcut: Ctrl/Cmd+O to trigger file picker
@@ -231,20 +356,36 @@ function render() {
   ctx.setLineDash([]);
   ctx.restore();
   crop.draw(ctx, viewport, canvas);
-  // In Select Mode, suppress single selection box when multi-selected exists
-  if (!(selectMode && selectMode.checked && multiSelected.size)) {
+  const selScale = viewport.scale || 1;
+  const green = '#00EE90'; // light green
+  const selDash = [4 / selScale, 4 / selScale];
+  // Selection rendering
+  if (selectMode && selectMode.checked) {
+    // Single selection (no multi set yet): draw thick light green
+    if (!multiSelected.size && objects.selected) {
+      const it = objects.selected;
+      ctx.save();
+      viewport.apply(ctx);
+      ctx.strokeStyle = green;
+      ctx.lineWidth = 4 / selScale;
+      ctx.setLineDash(selDash);
+      ctx.strokeRect(it.x + 0.5 / selScale, it.y + 0.5 / selScale, it.w, it.h);
+      ctx.restore();
+    }
+  } else {
+    // Not in Select Mode: default selection visuals
     objects.drawSelection(ctx, viewport);
   }
-  // Draw multi selections outlines if select mode
+  // Draw multi selections outlines in Select Mode
   if (selectMode && selectMode.checked && multiSelected.size) {
     ctx.save();
     viewport.apply(ctx);
-    ctx.strokeStyle = '#4dabf7';
-    ctx.lineWidth = 1 / (viewport.scale || 1);
-    ctx.setLineDash([4 / (viewport.scale || 1), 4 / (viewport.scale || 1)]);
+    ctx.strokeStyle = green;
+    ctx.lineWidth = 4 / selScale;
+    ctx.setLineDash(selDash);
     for (const id of multiSelected) {
       const it = objects.getById(id); if (!it) continue;
-      ctx.strokeRect(it.x + 0.5 / (viewport.scale || 1), it.y + 0.5 / (viewport.scale || 1), it.w, it.h);
+      ctx.strokeRect(it.x + 0.5 / selScale, it.y + 0.5 / selScale, it.w, it.h);
     }
     ctx.restore();
   }
@@ -1199,45 +1340,89 @@ window.addEventListener('export-selected', async () => {
   try {
     const hasMulti = selectMode && selectMode.checked && multiSelected.size > 0;
     if (hasMulti) {
-      // Export each selected object one by one
+      // Prepare a preview UI and allow batch download instead of firing multiple downloads
       const { mime, ext, quality } = getExportFormat();
-      for (const id of Array.from(multiSelected)) {
-        const it = objects.getById(id); 
+      const ids = Array.from(multiSelected);
+      currentMultiExports = [];
+      // Build blobs for each selected
+      for (const id of ids) {
+        const it = objects.getById(id);
         if (!it) continue;
-        
         const outC = document.createElement('canvas');
         const w = Math.max(1, Math.round(it.w));
         const h = Math.max(1, Math.round(it.h));
-        outC.width = w; 
-        outC.height = h;
-        
+        outC.width = w; outC.height = h;
         const octx = outC.getContext('2d');
-        if (mime === 'image/jpeg') { 
-          octx.fillStyle = '#ffffff'; 
-          octx.fillRect(0, 0, w, h); 
-        }
-        
+        if (mime === 'image/jpeg') { octx.fillStyle = '#ffffff'; octx.fillRect(0, 0, w, h); }
         octx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, 0, 0, w, h);
-        
-        // Handle blob creation and download
-        const blob = await new Promise(resolve => {
-          outC.toBlob(blob => resolve(blob), mime, quality);
-        });
-        
+        const blob = await new Promise(resolve => outC.toBlob(b => resolve(b), mime, quality));
         if (!blob) continue;
-        
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
         const sizeKB = Math.round(blob.size / 1024);
         const stamp = dateStamp();
-        
-        a.href = url;
-        a.download = `selected-${w}x${h}-${sizeKB}KB-${stamp}-${id}.${ext}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        const filename = `selected-${w}x${h}-${sizeKB}KB-${stamp}-${id}.${ext}`;
+        currentMultiExports.push({ id, w, h, blob, url, filename });
+      }
+      // Populate UI
+      if (multiExportList && multiExportDialog) {
+        multiExportList.innerHTML = '';
+        for (const item of currentMultiExports) {
+          const wrap = document.createElement('div');
+          wrap.className = 'multi-export-item';
+          const img = document.createElement('img');
+          img.className = 'multi-export-thumb';
+          img.src = item.url;
+          img.alt = `Selected ${item.w}×${item.h} (id ${item.id})`;
+          const meta = document.createElement('div');
+          meta.className = 'multi-export-meta';
+          meta.textContent = `${item.w}×${item.h} • ${(Math.round((item.blob.size/1024)*10)/10)} KB`;
+          const link = document.createElement('a');
+          link.className = 'multi-export-link';
+          link.href = item.url;
+          link.textContent = item.filename;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          wrap.appendChild(img);
+          wrap.appendChild(meta);
+          wrap.appendChild(link);
+          multiExportList.appendChild(wrap);
+        }
+        // Wire up buttons
+        if (downloadAllBtn) {
+          downloadAllBtn.onclick = async () => {
+            try {
+              const JSZipRef = window.JSZip || window.jszip || window.JSzip;
+              if (!JSZipRef) {
+                // Fallback: trigger individual downloads if JSZip missing
+                for (const item of currentMultiExports) {
+                  const a = document.createElement('a');
+                  a.href = item.url; a.download = item.filename;
+                  document.body.appendChild(a); a.click(); a.remove();
+                }
+                return;
+              }
+              const zip = new JSZipRef();
+              for (const item of currentMultiExports) zip.file(item.filename, item.blob);
+              const zipBlob = await zip.generateAsync({ type: 'blob' });
+              const url = URL.createObjectURL(zipBlob);
+              const a = document.createElement('a');
+              a.href = url; a.download = `selected-images-${dateStamp()}.zip`;
+              document.body.appendChild(a); a.click(); a.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 1200);
+            } catch (err) { console.error('ZIP download failed', err); }
+          };
+        }
+        const closeDialog = () => {
+          if (!multiExportDialog) return;
+          multiExportDialog.style.display = 'none';
+          // Cleanup URLs
+          for (const item of currentMultiExports) try { URL.revokeObjectURL(item.url); } catch {}
+          currentMultiExports = [];
+          if (multiExportList) multiExportList.innerHTML = '';
+        };
+        if (closeMultiExportBtn) closeMultiExportBtn.onclick = closeDialog;
+        // Show dialog
+        multiExportDialog.style.display = 'flex';
       }
     } else if (objects.selected) {
       await exportSelectedOnly();

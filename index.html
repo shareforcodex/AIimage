@@ -17,6 +17,19 @@
           <path d="M18 6.8 18.7 8.3 20.2 9 18.7 9.7 18 11.2 17.3 9.7 15.8 9 17.3 8.3 18 6.8Z" fill="currentColor"/>
         </svg>
       </div>
+
+    <!-- Multi Export Dialog -->
+    <div id="multiExportDialog" class="export-dialog" style="display: none;">
+      <div class="export-dialog-content" style="max-width: 720px; width: 95%;">
+        <h3>Export Selected Images</h3>
+        <p>Preview and download your selected images. Use "Download All" to get a ZIP.</p>
+        <div class="multi-export-toolbar" style="display:flex; gap:8px; align-items:center; margin: 8px 0 12px 0;">
+          <button id="downloadAllBtn" class="btn small">Download All (ZIP)</button>
+          <button id="closeMultiExportBtn" class="btn small" style="margin-left:auto;">Close</button>
+        </div>
+        <div id="multiExportList" class="multi-export-list"></div>
+      </div>
+    </div>
         <details class="menu">
           <summary>File</summary>
           <div class="menu-panel horizontal" style="gap: 8px; align-items: center;">
@@ -429,6 +442,34 @@
       .cancel-btn:hover {
         background: #eee;
       }
+      .multi-export-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+        max-height: 60vh;
+        overflow: auto;
+      }
+      .multi-export-item {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px;
+        background: #fff;
+        color: #222;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: stretch;
+      }
+      .multi-export-thumb {
+        width: 100%;
+        height: 120px;
+        object-fit: contain;
+        background: #f5f5f5;
+        border: 1px solid #eee;
+        border-radius: 4px;
+      }
+      .multi-export-meta { font-size: 12px; color: #444; }
+      .multi-export-link { font-size: 13px; color: #0b57d0; text-decoration: underline; word-break: break-all; }
     </style>
     <!-- Lucide Icons (pinned version, no build step) -->
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
@@ -438,43 +479,11 @@
           lucide.createIcons();
         }
       });
-      // Handle export dialog
+      // Directly open export images UI
       const exportBtn = document.getElementById('exportBtn');
-      const exportDialog = document.getElementById('exportDialog');
-      const exportCanvasBtn = document.getElementById('exportCanvasBtn');
-      const exportSelectedBtn = document.getElementById('exportSelectedBtn');
-      const cancelExportBtn = document.getElementById('cancelExportBtn');
-      
-      let currentExportResolve = null;
-      
       exportBtn.addEventListener('click', () => {
-        showExportDialog().then(option => {
-          if (option === 'canvas') {
-            window.dispatchEvent(new Event('export-canvas'));
-          } else if (option === 'selected') {
-            window.dispatchEvent(new Event('export-selected'));
-          }
-        }).catch(() => {});
+        window.dispatchEvent(new Event('export-show-ui'));
       });
-      
-      function showExportDialog() {
-        return new Promise((resolve) => {
-          currentExportResolve = resolve;
-          exportDialog.style.display = 'flex';
-        });
-      }
-      
-      function closeDialog(option = null) {
-        exportDialog.style.display = 'none';
-        if (currentExportResolve) {
-          currentExportResolve(option);
-          currentExportResolve = null;
-        }
-      }
-      
-      exportCanvasBtn.addEventListener('click', () => closeDialog('canvas'));
-      exportSelectedBtn.addEventListener('click', () => closeDialog('selected'));
-      cancelExportBtn.addEventListener('click', () => closeDialog());
     </script>
     <script type="module" src="./src/app.js"></script>
   </body>

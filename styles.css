@@ -234,6 +234,12 @@ canvas {
   pointer-events: none;
 }
 .action-item.select-toggle .select-icon { color: var(--text); }
+.action-item.select-toggle.active {
+  background: #90EE90; /* light green when active */
+  border-color: #5ea65e;
+}
+.action-item.select-toggle.active:hover { background: #98f098; }
+.action-item.select-toggle.active .select-icon { color: #0b3d0b; }
 .action-item.select-toggle input:checked + .select-icon {
   color: var(--accent);
   filter: drop-shadow(0 0 4px rgba(77,171,247,0.35));
