@@ -198,6 +198,7 @@ const sizeError = document.getElementById('sizeError');
 const posPopover = document.getElementById('posPopover');
 const posXInput = document.getElementById('posXInput');
 const posYInput = document.getElementById('posYInput');
+const posZInput = document.getElementById('posZInput');
 // Preset buttons
 const posPreset00 = document.getElementById('posPreset00');
 const posPreset1010 = document.getElementById('posPreset1010');
@@ -320,7 +321,7 @@ function cloneItem(it) {
   const c = document.createElement('canvas');
   c.width = it.canvas.width; c.height = it.canvas.height;
   c.getContext('2d').drawImage(it.canvas, 0, 0);
-  return { id: it.id, canvas: c, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh, meta: it.meta ? { ...it.meta } : null };
+  return { id: it.id, canvas: c, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh, z: typeof it.z === 'number' ? it.z : 0, meta: it.meta ? { ...it.meta } : null };
 }
 
 function cloneAllItems() {
@@ -968,6 +969,8 @@ function drawLine(a, b) {
 
 // Pointer interactions
 canvas.addEventListener('pointerdown', (e) => {
+  // If position popover is open, hide it on any canvas interaction
+  if (posPopover && !posPopover.hidden) closePosPopover();
   canvas.setPointerCapture(e.pointerId);
   const isBrush = (brushToggle.getAttribute('aria-pressed') === 'true') || (drawMode && drawMode.checked);
   const isCrop = (cropToggle && cropToggle.getAttribute('aria-pressed') === 'true') && crop.active;
@@ -1604,7 +1607,8 @@ function updateStatus() {
     const w = Math.max(1, Math.round(sel.w));
     const h = Math.max(1, Math.round(sel.h));
     selDim = `${w}×${h}`;
-    posDim = `${Math.round(sel.x)},${Math.round(sel.y)}`;
+    const z = typeof sel.z === 'number' ? sel.z : 0;
+    posDim = `${Math.round(sel.x)},${Math.round(sel.y)},${z}`;
   }
   // Render interactive spans for canvas and object size
   const parts = [];
@@ -1713,6 +1717,7 @@ function openPosPopover() {
   const sel = objects.selected;
   if (posXInput) posXInput.value = String(Math.round(sel.x));
   if (posYInput) posYInput.value = String(Math.round(sel.y));
+  if (posZInput) posZInput.value = String(typeof sel.z === 'number' ? sel.z : 0);
   posEditBefore = cloneItem(sel);
   posPopover.hidden = false;
   if (posXInput) posXInput.focus();
@@ -1725,7 +1730,7 @@ function closePosPopover() {
     const sel = objects.selected;
     const after = cloneItem(sel);
     // Only record if changed
-    if (posEditBefore.x !== after.x || posEditBefore.y !== after.y) {
+    if (posEditBefore.x !== after.x || posEditBefore.y !== after.y || (posEditBefore.z ?? 0) !== (after.z ?? 0)) {
       objHistory.undo.push({ type: 'modify', id: sel.id, before: posEditBefore, after });
       objHistory.redo.length = 0; updateUndoRedoState(); persist();
     }
@@ -1752,6 +1757,14 @@ if (posYInput) posYInput.addEventListener('input', () => {
   const ny = Number(posYInput.value);
   applyLivePosition(sel.x, ny);
 });
+if (posZInput) posZInput.addEventListener('input', () => {
+  const sel = objects.selected; if (!sel) return;
+  const nz = Math.round(Number(posZInput.value));
+  const val = Number.isFinite(nz) ? nz : 0;
+  if ((sel.z ?? 0) === val) return;
+  sel.z = val;
+  scheduleRender();
+});
 
 // Presets
 function setPreset(x, y) {
@@ -1774,7 +1787,7 @@ if (posPresetCenter) posPresetCenter.addEventListener('click', () => {
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePosPopover(); });
 window.addEventListener('mousedown', (e) => {
   if (!posPopover || posPopover.hidden) return;
-  if (!posPopover.contains(e.target) && !(statusBar && statusBar.contains(e.target))) closePosPopover();
+  if (!posPopover.contains(e.target)) closePosPopover();
 });
 if (exportSelectedBtn) exportSelectedBtn.addEventListener('click', async () => {
   const { mime, ext, quality } = getExportFormat();
