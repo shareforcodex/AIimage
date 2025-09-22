@@ -49,16 +49,6 @@
         <details class="menu">
           <summary>Edit</summary>
           <div class="menu-panel horizontal">
-            <div class="menu-row">
-              <label class="menu-item menu-check" title="Select multiple objects for batch actions">
-                <input id="selectMode" type="checkbox" /> Select Mode
-              </label>
-            </div>
-            <button id="undoBtn" class="menu-item" title="Undo (Ctrl/Cmd+Z)">Undo</button>
-            <button id="redoBtn" class="menu-item" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
-            <hr />
-            <button id="removeObject" class="menu-item" hidden>Remove</button>
-            <hr />
             <div class="menu-section">
               <div class="menu-label">Resize Selected</div>
               <div class="menu-row">
@@ -263,6 +253,24 @@
           </div>
         </details>
       </nav>
+      <!-- Quick Action Bar placed below the menubar -->
+      <div class="action-bar" role="toolbar" aria-label="Quick actions">
+        <label class="action-item select-toggle" title="Select multiple objects for batch actions">
+          <input id="selectMode" type="checkbox" />
+          <i data-lucide="mouse-pointer-2" class="select-icon" aria-hidden="true"></i>
+          <span class="visually-hidden">Select Mode</span>
+        </label>
+        <div class="divider" aria-hidden="true"></div>
+        <button id="undoBtn" class="icon-btn" title="Undo (Ctrl/Cmd+Z)" aria-label="Undo">
+          <i data-lucide="undo-2" aria-hidden="true"></i>
+        </button>
+        <button id="redoBtn" class="icon-btn" title="Redo (Ctrl/Cmd+Shift+Z)" aria-label="Redo">
+          <i data-lucide="redo-2" aria-hidden="true"></i>
+        </button>
+        <button id="removeObject" class="icon-btn danger" title="Remove selected" aria-label="Remove" hidden>
+          <i data-lucide="trash-2" aria-hidden="true"></i>
+        </button>
+      </div>
     </header>
 
     <main class="workspace">
@@ -316,6 +324,37 @@
       </div>
     </div>
     <style>
+      /* Action bar styles */
+      .action-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 8px 10px 8px;
+        background: var(--panel);
+        border-top: 1px solid rgba(255,255,255,0.06);
+      }
+      .action-item.select-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text);
+        font-size: 14px;
+      }
+      .icon-btn {
+        appearance: none;
+        border: 1px solid #000;
+        background: var(--btn);
+        color: var(--text);
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .icon-btn:hover { background: var(--btn-hover); }
+      .icon-btn.danger { color: var(--danger); border-color: #2a0000; }
       .export-dialog {
         position: fixed;
         top: 0;
@@ -391,7 +430,14 @@
         background: #eee;
       }
     </style>
+    <!-- Lucide Icons (pinned version, no build step) -->
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>
     <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide && lucide.createIcons) {
+          lucide.createIcons();
+        }
+      });
       // Handle export dialog
       const exportBtn = document.getElementById('exportBtn');
       const exportDialog = document.getElementById('exportDialog');

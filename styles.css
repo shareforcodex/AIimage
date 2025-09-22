@@ -144,7 +144,7 @@ body {
 
 .workspace {
     position: fixed;
-    top: 100px;
+    top: 140px; /* increased to make room for the new action bar under the menubar */
     display: grid;
     place-items: center;
     /* padding: 12px; */
@@ -209,6 +209,43 @@ canvas {
   padding: 0;
 }
 
+/* Action bar select-mode icon toggle */
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
+}
+
+.action-item.select-toggle {
+  padding: 0;
+  width: 32px; height: 32px;
+  border: 1px solid #000;
+  background: var(--btn);
+  border-radius: 6px;
+  justify-content: center;
+}
+.action-item.select-toggle:hover { background: var(--btn-hover); }
+.action-item.select-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+.action-item.select-toggle .select-icon { color: var(--text); }
+.action-item.select-toggle input:checked + .select-icon {
+  color: var(--accent);
+  filter: drop-shadow(0 0 4px rgba(77,171,247,0.35));
+}
+
+/* Normalize lucide icon sizes */
+.icon-btn svg,
+.action-item.select-toggle .select-icon {
+  width: 18px;
+  height: 18px;
+}
+
 @media (min-width: 900px) {
   .input.range {
     width: 140px;
@@ -221,11 +258,15 @@ canvas {
 
 /* Menubar */
 .menubar {
-  flex-wrap: wrap;
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: nowrap; /* keep all top-level menus on one line */
+  overflow-x: auto;  /* allow horizontal scroll if too narrow */
+  white-space: nowrap;
 }
+
+.menu { flex: 0 0 auto; }
 
 .menu {
   position: relative;
@@ -426,4 +467,18 @@ canvas {
 }
 .top-right-controls input[type="checkbox"] {
   margin: 0;
+}
+
+
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 10px 8px;
+  background: var(--panel);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  position: fixed;
+  top: 50px;
+  left: 0;
 }
