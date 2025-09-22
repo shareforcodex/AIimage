@@ -22,6 +22,7 @@ export class ObjectsManager {
       x: (at && typeof at.x === 'number') ? at.x : 0,
       y: (at && typeof at.y === 'number') ? at.y : 0,
       w: iw, h: ih,
+      z: (meta && typeof meta.z === 'number') ? meta.z : 0,
       meta: meta || null,
     };
     this.items.push(item);
@@ -32,15 +33,24 @@ export class ObjectsManager {
   get selected() { return this.items.find(i => i.id === this.selectedId) || null; }
 
   bringToFront(id) {
-    const idx = this.items.findIndex(i => i.id === id);
-    if (idx >= 0) {
-      const [it] = this.items.splice(idx, 1);
-      this.items.push(it);
-    }
+    // Adjust z so that this item draws above others
+    const it = this.getById(id);
+    if (!it) return;
+    const maxZ = this.items.reduce((m, o) => Math.max(m, o.z || 0), 0);
+    it.z = maxZ + 1;
+  }
+
+  getDrawOrder() {
+    // Return items sorted by z ascending (lower behind, higher in front). Stable by id order fallback
+    return [...this.items].sort((a, b) => {
+      const za = a.z || 0, zb = b.z || 0;
+      if (za !== zb) return za - zb;
+      return a.id - b.id;
+    });
   }
 
   draw(ctx) {
-    for (const it of this.items) {
+    for (const it of this.getDrawOrder()) {
       ctx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, it.x, it.y, it.w, it.h);
     }
   }
@@ -63,6 +73,7 @@ export class ObjectsManager {
       canvas: data.canvas,
       x: data.x, y: data.y, w: data.w, h: data.h,
       sx: data.sx ?? 0, sy: data.sy ?? 0, sw: data.sw ?? data.canvas.width, sh: data.sh ?? data.canvas.height,
+      z: (typeof data.z === 'number') ? data.z : 0,
       meta: data.meta ?? null,
     };
     this.items.push(item);
@@ -76,6 +87,7 @@ export class ObjectsManager {
     it.canvas = data.canvas;
     it.x = data.x; it.y = data.y; it.w = data.w; it.h = data.h;
     it.sx = data.sx; it.sy = data.sy; it.sw = data.sw; it.sh = data.sh;
+    it.z = (typeof data.z === 'number') ? data.z : (it.z || 0);
     it.meta = data.meta ?? it.meta ?? null;
     return true;
   }
@@ -110,9 +122,10 @@ export class ObjectsManager {
   }
 
   hitTest(pt) {
-    // topmost first
-    for (let i = this.items.length - 1; i >= 0; i--) {
-      const it = this.items[i];
+    // consider z-order: test from topmost to bottom
+    const list = this.getDrawOrder();
+    for (let i = list.length - 1; i >= 0; i--) {
+      const it = list[i];
       if (pt.x >= it.x && pt.x <= it.x + it.w && pt.y >= it.y && pt.y <= it.y + it.h) return it.id;
     }
     return null;
@@ -139,7 +152,6 @@ export class ObjectsManager {
     const hit = this.hitTest(pt);
     if (hit) {
       this.selectedId = hit;
-      this.bringToFront(hit);
       const sel = this.selected;
       const scaleX = sel.w / sel.sw;
       const scaleY = sel.h / sel.sh;
@@ -251,7 +263,7 @@ export class ObjectsManager {
     const out = [];
     for (const it of this.items) {
       const blob = await canvasToBlob(it.canvas);
-      out.push({ id: it.id, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh, blob, meta: it.meta ?? null });
+      out.push({ id: it.id, x: it.x, y: it.y, w: it.w, h: it.h, sx: it.sx, sy: it.sy, sw: it.sw, sh: it.sh, z: it.z || 0, blob, meta: it.meta ?? null });
     }
     return out;
   }
@@ -269,6 +281,7 @@ export class ObjectsManager {
       this.items.push({ id, canvas: c,
         x: s.x, y: s.y, w: s.w, h: s.h,
         sx: s.sx ?? 0, sy: s.sy ?? 0, sw: s.sw ?? c.width, sh: s.sh ?? c.height,
+        z: (typeof s.z === 'number') ? s.z : 0,
         meta: s.meta ?? null,
       });
     }

@@ -20,7 +20,7 @@ window.addEventListener('export-show-ui', async () => {
     const sctx = scene.getContext('2d');
     sctx.clearRect(0, 0, scene.width, scene.height);
     sctx.drawImage(doc, 0, 0);
-    for (const it of objects.items) {
+    for (const it of objects.getDrawOrder()) {
       sctx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, it.x, it.y, it.w, it.h);
     }
     // Output canvas respects JPEG background if needed
@@ -140,6 +140,10 @@ const objectSizePreset = document.getElementById('objectSizePreset');
 const objCustomW = document.getElementById('objCustomW');
 const objCustomH = document.getElementById('objCustomH');
 const applyObjSizeBtn = document.getElementById('applyObjSizeBtn');
+// Edit menu: duplicate & z-index
+const duplicateObjBtn = document.getElementById('duplicateObjBtn');
+const zIndexInput = document.getElementById('zIndexInput');
+const applyZIndexBtn = document.getElementById('applyZIndexBtn');
 
 const brightness = document.getElementById('brightness');
 const contrast = document.getElementById('contrast');
@@ -1294,12 +1298,16 @@ function updateEditMenuRemoveState() {
   // Show when an object is selected (images have meta null; text has meta.type === 'text')
   removeObjectBtn.hidden = !sel;
   // Enable/disable related controls
-  const controls = [objectSizePreset, objCustomW, objCustomH, applyObjSizeBtn];
+  const controls = [objectSizePreset, objCustomW, objCustomH, applyObjSizeBtn, duplicateObjBtn, zIndexInput, applyZIndexBtn];
   for (const c of controls) if (c) c.disabled = !sel;
   // Prefill custom size with current displayed size
   if (sel && objCustomW && objCustomH) {
     objCustomW.value = String(Math.round(sel.w));
     objCustomH.value = String(Math.round(sel.h));
+  }
+  // Prefill Z index
+  if (sel && zIndexInput) {
+    zIndexInput.value = String(typeof sel.z === 'number' ? sel.z : 0);
   }
 }
 
@@ -1323,6 +1331,51 @@ if (removeObjectBtn) {
     objHistory.redo.length = 0; updateUndoRedoState();
     persist();
     updateEditMenuRemoveState();
+  });
+}
+
+// Duplicate selected object with +50,+50 offset
+if (duplicateObjBtn) {
+  duplicateObjBtn.addEventListener('click', () => {
+    const sel = objects.selected; if (!sel) { window.alert('Select an object to duplicate.'); return; }
+    const data = {
+      canvas: (() => { const c = document.createElement('canvas'); c.width = sel.canvas.width; c.height = sel.canvas.height; c.getContext('2d').drawImage(sel.canvas, 0, 0); return c; })(),
+      x: Math.round(sel.x + 50),
+      y: Math.round(sel.y + 50),
+      w: sel.w,
+      h: sel.h,
+      sx: sel.sx,
+      sy: sel.sy,
+      sw: sel.sw,
+      sh: sel.sh,
+      z: typeof sel.z === 'number' ? sel.z : 0,
+      meta: sel.meta ? { ...sel.meta } : null,
+    };
+    const newId = objects.addFromData(data);
+    const it = objects.getById(newId);
+    if (it) {
+      objects.selectedId = it.id;
+      render();
+      objHistory.undo.push({ type: 'add', item: cloneItem(it) });
+      objHistory.redo.length = 0; updateUndoRedoState();
+      persist();
+      updateEditMenuRemoveState();
+    }
+  });
+}
+
+// Apply Z-index to selected
+if (applyZIndexBtn) {
+  applyZIndexBtn.addEventListener('click', () => {
+    const sel = objects.selected; if (!sel) { window.alert('Select an object to set Z.'); return; }
+    const nz = Math.round(Number(zIndexInput && zIndexInput.value));
+    const before = cloneItem(sel);
+    sel.z = isNaN(nz) ? 0 : nz;
+    render();
+    const after = cloneItem(sel);
+    objHistory.undo.push({ type: 'modify', id: sel.id, before, after });
+    objHistory.redo.length = 0; updateUndoRedoState();
+    persist();
   });
 }
 
@@ -1363,7 +1416,7 @@ async function exportFullCanvas() {
   sctx.clearRect(0, 0, scene.width, scene.height);
   sctx.drawImage(doc, 0, 0);
   // Use the same drawing semantics as on-screen rendering
-  for (const it of objects.items) {
+  for (const it of objects.getDrawOrder()) {
     sctx.drawImage(it.canvas, it.sx, it.sy, it.sw, it.sh, it.x, it.y, it.w, it.h);
   }
 

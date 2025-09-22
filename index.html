@@ -71,6 +71,8 @@
           <summary>Edit</summary>
           <div class="menu-panel horizontal">
             <div class="menu-section">
+              <button id="duplicateObjBtn" class="btn small" title="Duplicate selected (offset +50,+50)">Duplicate</button>
+
               <div class="menu-label">Resize Selected</div>
               <div class="menu-row">
                 <label>Preset</label>
@@ -85,12 +87,22 @@
                 </select>
               </div>
               <div class="menu-row">
+                
                 <label>Custom</label>
                 <input id="objCustomW" class="input number" type="number" min="1" max="4096" step="1" placeholder="W" />
                 <input id="objCustomH" class="input number" type="number" min="1" max="4096" step="1" placeholder="H" />
                 <button id="applyObjSizeBtn" class="btn small">Apply</button>
               </div>
               <div class="menu-hint muted">Select an image object first</div>
+            </div>
+            <div class="menu-section">
+              <div class="menu-label">Duplicate & Layer</div>
+              <div class="menu-row">
+                <label for="zIndexInput" style="width:auto;">Z</label>
+                <input id="zIndexInput" class="input number" type="number" step="1" value="0" style="width:72px;" />
+                <button id="applyZIndexBtn" class="btn small" title="Apply Z to selected">Apply Z</button>
+              </div>
+              <div class="menu-hint muted">Higher Z draws above lower Z. Default 0.</div>
             </div>
           </div>
         </details>
