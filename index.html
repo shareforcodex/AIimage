@@ -18,13 +18,21 @@
         </svg>
       </div>
 
+    <!-- Lightbox for large preview -->
+    <div id="lightbox" class="export-dialog" style="display:none; background-color: rgba(0,0,0,0.85);">
+      <div class="export-dialog-content" style="background: transparent; box-shadow: none; border: none; max-width: 90vw; width: auto; position: fixed; top: 10%; left: 90%">
+        <button id="lightboxClose" class="btn small" style="margin-bottom: 8px;">Close</button>
+        <img id="lightboxImg" alt="Preview" style=" max-height: 80vh; display: block; border-radius: 6px; z-index: 10000; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);" />
+      </div>
+    </div>
+
     <!-- Multi Export Dialog -->
     <div id="multiExportDialog" class="export-dialog" style="display: none;">
       <div class="export-dialog-content" style="max-width: 720px; width: 95%;">
         <h3>Export Selected Images</h3>
-        <p>Preview and download your selected images. Use "Download All" to get a ZIP.</p>
+        <p>Preview and download your selected images.</p>
         <div class="multi-export-toolbar" style="display:flex; gap:8px; align-items:center; margin: 8px 0 12px 0;">
-          <button id="downloadAllBtn" class="btn small">Download All (ZIP)</button>
+          <button id="downloadAllBtn" class="btn small">Download All</button>
           <button id="closeMultiExportBtn" class="btn small" style="margin-left:auto;">Close</button>
         </div>
         <div id="multiExportList" class="multi-export-list"></div>
@@ -470,6 +478,8 @@
       }
       .multi-export-meta { font-size: 12px; color: #444; }
       .multi-export-link { font-size: 13px; color: #0b57d0; text-decoration: underline; word-break: break-all; }
+      .download-btn { appearance:none; border:1px solid #ddd; background:#f7f7f7; color:#222; padding:6px 8px; border-radius:6px; cursor:pointer; }
+      .download-btn:hover { background:#eee; }
     </style>
     <!-- Lucide Icons (pinned version, no build step) -->
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" crossorigin="anonymous"></script>

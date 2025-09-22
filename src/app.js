@@ -74,13 +74,21 @@ window.addEventListener('export-show-ui', async () => {
         img.className = 'multi-export-thumb';
         img.src = item.url;
         img.alt = `${item.id === 'canvas' ? 'Canvas' : 'Selected'} ${item.w}×${item.h}`;
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', () => {
+          const w = window.open(item.url, '_blank', 'noopener');
+          if (w) w.opener = null;
+        });
         const meta = document.createElement('div');
         meta.className = 'multi-export-meta';
         meta.textContent = `${item.id === 'canvas' ? 'Canvas' : 'Selected'} • ${item.w}×${item.h} • ${(Math.round((item.blob.size/1024)*10)/10)} KB`;
-        const link = document.createElement('a');
-        link.className = 'multi-export-link';
-        link.href = item.url; link.textContent = item.filename; link.target = '_blank'; link.rel = 'noopener noreferrer';
-        wrap.appendChild(img); wrap.appendChild(meta); wrap.appendChild(link);
+        const btn = document.createElement('button');
+        btn.className = 'download-btn';
+        btn.textContent = 'Download';
+        btn.addEventListener('click', () => {
+          const a = document.createElement('a'); a.href = item.url; a.download = item.filename; document.body.appendChild(a); a.click(); a.remove();
+        });
+        wrap.appendChild(img); wrap.appendChild(meta); wrap.appendChild(btn);
         multiExportList.appendChild(wrap);
       }
       if (downloadAllBtn) {
@@ -188,6 +196,22 @@ const multiExportList = document.getElementById('multiExportList');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const closeMultiExportBtn = document.getElementById('closeMultiExportBtn');
 let currentMultiExports = [];
+// Lightbox elements
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxClose = document.getElementById('lightboxClose');
+function openLightbox(url) {
+  if (!lightbox || !lightboxImg) return;
+  lightboxImg.src = url;
+  lightbox.style.display = 'flex';
+}
+function closeLightbox() {
+  if (!lightbox || !lightboxImg) return;
+  lightbox.style.display = 'none';
+  lightboxImg.src = '';
+}
+if (lightboxClose) lightboxClose.onclick = closeLightbox;
+if (lightbox) lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
 
 // Text tools
 const textContent = document.getElementById('textContent');
@@ -1373,18 +1397,24 @@ window.addEventListener('export-selected', async () => {
           img.className = 'multi-export-thumb';
           img.src = item.url;
           img.alt = `Selected ${item.w}×${item.h} (id ${item.id})`;
+          img.style.cursor = 'pointer';
+          img.addEventListener('click', () => {
+            const w = window.open(item.url, '_blank', 'noopener');
+            if (w) w.opener = null;
+          });
           const meta = document.createElement('div');
           meta.className = 'multi-export-meta';
           meta.textContent = `${item.w}×${item.h} • ${(Math.round((item.blob.size/1024)*10)/10)} KB`;
-          const link = document.createElement('a');
-          link.className = 'multi-export-link';
-          link.href = item.url;
-          link.textContent = item.filename;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
+          const btn = document.createElement('button');
+          btn.className = 'download-btn';
+          btn.textContent = 'Download';
+          btn.addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = item.url; a.download = item.filename; document.body.appendChild(a); a.click(); a.remove();
+          });
           wrap.appendChild(img);
           wrap.appendChild(meta);
-          wrap.appendChild(link);
+          wrap.appendChild(btn);
           multiExportList.appendChild(wrap);
         }
         // Wire up buttons
