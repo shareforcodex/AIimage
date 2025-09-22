@@ -203,7 +203,8 @@ canvas {
 
 .status-wrap {
   position: fixed;
-  right: 12px;
+  left: 12px; /* move to left side */
+  right: auto;
   bottom: 18px; /* moved up a bit to avoid edge overlap */
   display: inline-flex;
   align-items: center;

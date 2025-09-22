@@ -374,18 +374,28 @@ function render() {
   ctx.drawImage(doc, 0, 0);
   objects.draw(ctx);
   ctx.restore();
-  // Draw document boundary
+  // Draw document boundary as tri-color dashed (white, yellow, green)
   ctx.save();
   viewport.apply(ctx);
   const s = viewport.scale || 1;
   const px = 1 / s;
-  const thick = 4 * px; // thicker, scale-stable (approx 4px on screen)
+  const thick = 4 * px; // scale-stable thickness
   const x = 0.5 * px, y = 0.5 * px;
   const w = doc.width - 1 * px, h = doc.height - 1 * px;
-  ctx.setLineDash([]);
-  ctx.strokeStyle = '#ffffff'; // consistent white border
+  const dash = 8 * px; // base dash unit
+  const pattern = [dash, 2 * dash]; // one dash, two dashes gap -> 3 slots
+  const colors = ['#000000', '#FFD700', '#00EE90'];
+  const offsets = [0, dash, 2 * dash];
   ctx.lineWidth = thick;
-  ctx.strokeRect(x, y, w, h);
+  for (let i = 0; i < 3; i++) {
+    ctx.setLineDash(pattern);
+    ctx.lineDashOffset = offsets[i];
+    ctx.strokeStyle = colors[i];
+    ctx.strokeRect(x, y, w, h);
+  }
+  // cleanup
+  ctx.setLineDash([]);
+  ctx.lineDashOffset = 0;
   ctx.restore();
   crop.draw(ctx, viewport, canvas);
   const selScale = viewport.scale || 1;
