@@ -246,7 +246,7 @@ function isCoarsePointer() {
 function desiredHandleSize() {
   const coarse = isCoarsePointer();
   const touch = observedTouch || coarse; // prioritize actual touch presence
-  const base = 60; // desktop size
+  const base = 30; // desktop size
   const touchSize = 96; // larger for touch
   let size = touch ? touchSize : base;
   // Slight bump on very high DPR screens for comfort
@@ -546,6 +546,19 @@ applySizeBtn.addEventListener('click', () => {
   const h = Number(customH.value);
   if (w && h) setCanvasSize(w, h);
 });
+
+// Auto-calc height from width for selected image (maintain aspect)
+if (objCustomW) {
+  objCustomW.addEventListener('input', () => {
+    const sel = objects.selected;
+    if (!sel) return; // only when a single object is selected
+    const w = Math.max(1, Number(objCustomW.value) || 0);
+    if (!w) return;
+    const ratio = sel.h / Math.max(1, sel.w);
+    const h = Math.round(w * ratio);
+    if (objCustomH) objCustomH.value = String(h);
+  });
+}
 
 // Resize Selected Object (Edit menu)
 function resizeSelectedObjectTo(w, h) {

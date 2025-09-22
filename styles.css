@@ -168,9 +168,14 @@ body {
 
 .workspace {
     position: fixed;
-    top: 140px; /* increased to make room for the new action bar under the menubar */
+    top: 100px; /* space for menubar/action bar */
+    left: 0;
+    right: 0;
+    bottom: 0; /* anchor to bottom to fill screen */
+    height: calc(100vh - 100px);
     display: grid;
     place-items: center;
+    overflow: auto; /* if canvas is larger, allow scroll */
     /* padding: 12px; */
     border-width: medium;
     border-color: #585868;
