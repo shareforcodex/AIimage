@@ -246,8 +246,8 @@ function isCoarsePointer() {
 function desiredHandleSize() {
   const coarse = isCoarsePointer();
   const touch = observedTouch || coarse; // prioritize actual touch presence
-  const base = 24; // desktop size
-  const touchSize = 56; // larger for touch
+  const base = 60; // desktop size
+  const touchSize = 96; // larger for touch
   let size = touch ? touchSize : base;
   // Slight bump on very high DPR screens for comfort
   const dpr = window.devicePixelRatio || 1;
