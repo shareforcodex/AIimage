@@ -299,11 +299,12 @@
         <canvas id="canvas" width="1024" height="1024"></canvas>
       </div>
       <div class="status-wrap">
-        <div id="statusBar" class="status-bar" aria-live="polite"></div>
         <div class="quick-zoom" aria-label="Quick zoom controls">
           <button id="quickZoomOut" class="btn small" title="Zoom Out">−</button>
           <button id="quickZoomIn" class="btn small" title="Zoom In">+</button>
+          <span id="quickZoomLabel" class="muted" style="margin-left:1px;margin-top:4px; min-width:48px; display:inline-block; text-align:center;">100%</span>
         </div>
+        <div id="statusBar" class="status-bar" aria-live="polite"></div>
       </div>
     </main>
 
@@ -314,10 +315,28 @@
       <div class="size-popover__row">
         <input id="sizeInput" class="input" type="text" placeholder="e.g. 1024x1024 or 800,600" />
         <button id="applySizeQuick" class="btn small">Apply</button>
-        <button id="cancelSizeQuick" class="btn small">Cancel</button>
-        <button id="exportSelectedBtnOld" class="btn small" title="Export selected objects" style="display: none;">Export Sel</button>
+        <button id="cancelSizeQuick" class="btn small cancel-btn">Cancel</button>
+        <div id="sizeError" class="size-popover__error"></div>
       </div>
-      <div id="sizeError" class="size-popover__error" role="alert" aria-live="polite"></div>
+    </div>
+
+    <!-- Position popover for setting object x,y -->
+    <div id="posPopover" class="size-popover" hidden>
+      <div class="size-popover__title">Set Position</div>
+      <div class="size-popover__row">
+        <label class="menu-label" for="posXInput" style="min-width:40px;">X</label>
+        <input id="posXInput" class="input number" type="number" step="1" />
+      </div>
+      <div class="size-popover__row">
+        <label class="menu-label" for="posYInput" style="min-width:40px;">Y</label>
+        <input id="posYInput" class="input number" type="number" step="1" />
+      </div>
+      <div class="size-popover__row">
+        <button id="posPreset00" class="btn small" title="0,0">0,0</button>
+        <button id="posPreset1010" class="btn small" title="10,10">10,10</button>
+        <button id="posPreset100100" class="btn small" title="100,100">100,100</button>
+        <button id="posPresetCenter" class="btn small" title="Center">Center</button>
+      </div>
     </div>
 
     <!-- Export Dialog -->

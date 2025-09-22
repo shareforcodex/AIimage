@@ -160,6 +160,7 @@ const zoomOutBtn = document.getElementById('zoomOut');
 const zoomResetBtn = document.getElementById('zoomReset');
 const quickZoomInBtn = document.getElementById('quickZoomIn');
 const quickZoomOutBtn = document.getElementById('quickZoomOut');
+const quickZoomLabel = document.getElementById('quickZoomLabel');
 
 const brushToggle = document.getElementById('brushToggle');
 const brushColor = document.getElementById('brushColor');
@@ -189,6 +190,16 @@ const sizeInput = document.getElementById('sizeInput');
 const applySizeQuick = document.getElementById('applySizeQuick');
 const cancelSizeQuick = document.getElementById('cancelSizeQuick');
 const sizeError = document.getElementById('sizeError');
+// Position popover refs
+const posPopover = document.getElementById('posPopover');
+const posXInput = document.getElementById('posXInput');
+const posYInput = document.getElementById('posYInput');
+// Preset buttons
+const posPreset00 = document.getElementById('posPreset00');
+const posPreset1010 = document.getElementById('posPreset1010');
+const posPreset100100 = document.getElementById('posPreset100100');
+const posPresetCenter = document.getElementById('posPresetCenter');
+let posEditBefore = null; // capture for single undo entry
 
 // Multi-export dialog elements
 const multiExportDialog = document.getElementById('multiExportDialog');
@@ -1102,7 +1113,10 @@ clearCanvas.addEventListener('click', () => {
 });
 
 // Zoom controls
-function updateZoomLabel() { if (zoomResetBtn) zoomResetBtn.textContent = `${Math.round(viewport.scale * 100)}%`; }
+function updateZoomLabel() {
+  const v = `${Math.round(viewport.scale * 100)}%`;
+  if (quickZoomLabel) quickZoomLabel.textContent = v;
+}
 function doZoomIn() { viewport.zoomAt(1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); }
 function doZoomOut() { viewport.zoomAt(1 / 1.2, canvas.width / 2, canvas.height / 2); updateZoomLabel(); render(); }
 if (zoomInBtn) {
@@ -1528,6 +1542,7 @@ function updateStatus() {
   if (!statusBar) return;
   const canvasDim = `${canvas.width}×${canvas.height}`;
   let selDim = '';
+  let posDim = '';
   const hasMulti = selectMode && selectMode.checked && multiSelected.size > 0;
   if (hasMulti) {
     selDim = `${multiSelected.size} selected`;
@@ -1536,19 +1551,23 @@ function updateStatus() {
     const w = Math.max(1, Math.round(sel.w));
     const h = Math.max(1, Math.round(sel.h));
     selDim = `${w}×${h}`;
+    posDim = `${Math.round(sel.x)},${Math.round(sel.y)}`;
   }
-  const zoom = `${Math.round(viewport.scale * 100)}%`;
   // Render interactive spans for canvas and object size
   const parts = [];
   parts.push(`<button class="linkish" id="statusCanvas">${canvasDim}</button>`);
-  if (selDim) parts.push(`<button class="linkish" id="statusObject">${selDim}</button>`);
-  parts.push(`<span id="statusZoom">${zoom}</span>`);
+  if (selDim) {
+    parts.push(`<button class="linkish" id="statusObject">${selDim}</button>`);
+    if (posDim) parts.push(`<button class="linkish" id="statusPos" title="Set position">${posDim}</button>`);
+  }
   statusBar.innerHTML = parts.join('  •  ');
   // Attach click handlers after render
   const sc = document.getElementById('statusCanvas');
   const so = document.getElementById('statusObject');
+  const sp = document.getElementById('statusPos');
   if (sc) sc.onclick = () => openSizePopover('canvas');
   if (so) so.onclick = () => openSizePopover('object');
+  if (sp) sp.onclick = () => openPosPopover();
 }
 
 // Styling helper for inline link-like buttons in status
@@ -1634,6 +1653,76 @@ if (applySizeQuick) applySizeQuick.addEventListener('click', () => {
 });
 if (cancelSizeQuick) cancelSizeQuick.addEventListener('click', () => closeSizePopover());
 const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+
+// Position popover logic
+function openPosPopover() {
+  if (!posPopover || !objects || !objects.selected) return;
+  const sel = objects.selected;
+  if (posXInput) posXInput.value = String(Math.round(sel.x));
+  if (posYInput) posYInput.value = String(Math.round(sel.y));
+  posEditBefore = cloneItem(sel);
+  posPopover.hidden = false;
+  if (posXInput) posXInput.focus();
+}
+function closePosPopover() {
+  if (!posPopover) return;
+  posPopover.hidden = true;
+  // Create a single undo entry for the live-edited session
+  if (posEditBefore && objects && objects.selected && posEditBefore.id === objects.selected.id) {
+    const sel = objects.selected;
+    const after = cloneItem(sel);
+    // Only record if changed
+    if (posEditBefore.x !== after.x || posEditBefore.y !== after.y) {
+      objHistory.undo.push({ type: 'modify', id: sel.id, before: posEditBefore, after });
+      objHistory.redo.length = 0; updateUndoRedoState(); persist();
+    }
+  }
+  posEditBefore = null;
+}
+
+// Apply live on input
+function applyLivePosition(nx, ny) {
+  const sel = objects.selected; if (!sel) return;
+  const clampedX = Math.round(Number.isFinite(nx) ? nx : sel.x);
+  const clampedY = Math.round(Number.isFinite(ny) ? ny : sel.y);
+  if (clampedX === sel.x && clampedY === sel.y) return;
+  sel.x = clampedX; sel.y = clampedY;
+  scheduleRender();
+}
+if (posXInput) posXInput.addEventListener('input', () => {
+  const sel = objects.selected; if (!sel) return;
+  const nx = Number(posXInput.value);
+  applyLivePosition(nx, sel.y);
+});
+if (posYInput) posYInput.addEventListener('input', () => {
+  const sel = objects.selected; if (!sel) return;
+  const ny = Number(posYInput.value);
+  applyLivePosition(sel.x, ny);
+});
+
+// Presets
+function setPreset(x, y) {
+  const sel = objects.selected; if (!sel) return;
+  if (posXInput) posXInput.value = String(x);
+  if (posYInput) posYInput.value = String(y);
+  applyLivePosition(x, y);
+}
+if (posPreset00) posPreset00.addEventListener('click', () => setPreset(0, 0));
+if (posPreset1010) posPreset1010.addEventListener('click', () => setPreset(10, 10));
+if (posPreset100100) posPreset100100.addEventListener('click', () => setPreset(100, 100));
+if (posPresetCenter) posPresetCenter.addEventListener('click', () => {
+  const sel = objects.selected; if (!sel) return;
+  const nx = Math.round((doc.width - sel.w) / 2);
+  const ny = Math.round((doc.height - sel.h) / 2);
+  setPreset(nx, ny);
+});
+
+// Close on Escape or outside click (like size popover)
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePosPopover(); });
+window.addEventListener('mousedown', (e) => {
+  if (!posPopover || posPopover.hidden) return;
+  if (!posPopover.contains(e.target) && !(statusBar && statusBar.contains(e.target))) closePosPopover();
+});
 if (exportSelectedBtn) exportSelectedBtn.addEventListener('click', async () => {
   const { mime, ext, quality } = getExportFormat();
   const ids = (selectMode && selectMode.checked && multiSelected.size > 0)
