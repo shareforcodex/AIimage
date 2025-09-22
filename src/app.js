@@ -379,25 +379,13 @@ function render() {
   viewport.apply(ctx);
   const s = viewport.scale || 1;
   const px = 1 / s;
-  const thick = 3 * px;
+  const thick = 4 * px; // thicker, scale-stable (approx 4px on screen)
   const x = 0.5 * px, y = 0.5 * px;
   const w = doc.width - 1 * px, h = doc.height - 1 * px;
-  if (!fastMode) {
-    const dash = [8 * px, 4 * px];
-    ctx.setLineDash(dash);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.lineWidth = thick + 2 * px;
-    ctx.strokeRect(x, y, w, h);
-    ctx.strokeStyle = '#4dabf7';
-    ctx.lineWidth = thick;
-    ctx.strokeRect(x, y, w, h);
-    ctx.setLineDash([]);
-  } else {
-    // Simpler boundary in fast mode
-    ctx.strokeStyle = '#2e2e2e';
-    ctx.lineWidth = 1 * px;
-    ctx.strokeRect(x, y, w, h);
-  }
+  ctx.setLineDash([]);
+  ctx.strokeStyle = '#ffffff'; // consistent white border
+  ctx.lineWidth = thick;
+  ctx.strokeRect(x, y, w, h);
   ctx.restore();
   crop.draw(ctx, viewport, canvas);
   const selScale = viewport.scale || 1;
