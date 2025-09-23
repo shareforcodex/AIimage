@@ -153,6 +153,7 @@ const applyAdjustBtn = document.getElementById('applyAdjustBtn');
 const undoBtn = document.getElementById('undoBtn');
 const redoBtn = document.getElementById('redoBtn');
 const removeObjectBtn = document.getElementById('removeObject');
+const selectAllBtn = document.getElementById('selectAllBtn');
 
 const rotateL = document.getElementById('rotateL');
 const rotateR = document.getElementById('rotateR');
@@ -285,7 +286,9 @@ window.addEventListener('resize', () => { applyHandleSize(); render(); });
 if (selectMode) {
   const selectLabel = selectMode.closest('label');
   const syncSelectLabel = () => {
-    if (selectLabel) selectLabel.classList.toggle('active', !!selectMode.checked);
+    const active = !!selectMode.checked;
+    if (selectLabel) selectLabel.classList.toggle('active', active);
+    if (selectAllBtn) selectAllBtn.hidden = !active;
   };
   selectMode.addEventListener('change', () => {
     if (selectMode.checked) {
@@ -301,6 +304,20 @@ if (selectMode) {
   });
   // initialize state on load
   syncSelectLabel();
+}
+
+// Select All in Select Mode
+if (selectAllBtn) {
+  selectAllBtn.addEventListener('click', () => {
+    if (!selectMode || !selectMode.checked) return;
+    if (!objects || !objects.items || objects.items.length === 0) return;
+    multiSelected = new Set(objects.items.map(it => it.id));
+    // Maintain a single selection for compatibility (use topmost by draw order)
+    const order = objects.getDrawOrder();
+    if (order.length) objects.selectedId = order[order.length - 1].id;
+    updateEditMenuRemoveState();
+    render();
+  });
 }
 
 // Quick open shortcut: Ctrl/Cmd+O to trigger file picker
