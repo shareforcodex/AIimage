@@ -564,6 +564,7 @@ fileInput.addEventListener('change', async (e) => {
   }
   render();
   persist();
+  updateEditMenuRemoveState();
 });
 
 function isCanvasBlank() {
@@ -1322,9 +1323,10 @@ function updateEditMenuRemoveState() {
   for (const c of controls) if (c) c.disabled = !sel;
   // Prefill custom size with current displayed size
   if (sel && objCustomW && objCustomH) {
-    objCustomW.value = String(Math.round(sel.w));
-    objCustomH.value = String(Math.round(sel.h));
+    objCustomW.value = String(Math.round(sel.canvas ? sel.canvas.width : sel.w));
+    objCustomH.value = String(Math.round(sel.canvas ? sel.canvas.height : sel.h));
   }
+  if (objectSizePreset) objectSizePreset.value = '';
   // Prefill Z index
   if (sel && zIndexInput) {
     zIndexInput.value = String(typeof sel.z === 'number' ? sel.z : 0);
@@ -1385,17 +1387,37 @@ if (duplicateObjBtn) {
 }
 
 // Apply Z-index to selected
+function updateSelectedZIndex(rawValue, { alertOnMissing = false } = {}) {
+  const sel = objects.selected;
+  if (!sel) {
+    if (alertOnMissing) window.alert('Select an object to set Z.');
+    return false;
+  }
+  const currentZ = typeof sel.z === 'number' ? sel.z : 0;
+  const parsed = Math.round(Number(rawValue));
+  const nz = Number.isNaN(parsed) ? 0 : parsed;
+  if (nz === currentZ) return false;
+  const before = cloneItem(sel);
+  sel.z = nz;
+  render();
+  const after = cloneItem(sel);
+  objHistory.undo.push({ type: 'modify', id: sel.id, before, after });
+  objHistory.redo.length = 0; updateUndoRedoState();
+  persist();
+  return true;
+}
+
 if (applyZIndexBtn) {
   applyZIndexBtn.addEventListener('click', () => {
-    const sel = objects.selected; if (!sel) { window.alert('Select an object to set Z.'); return; }
-    const nz = Math.round(Number(zIndexInput && zIndexInput.value));
-    const before = cloneItem(sel);
-    sel.z = isNaN(nz) ? 0 : nz;
-    render();
-    const after = cloneItem(sel);
-    objHistory.undo.push({ type: 'modify', id: sel.id, before, after });
-    objHistory.redo.length = 0; updateUndoRedoState();
-    persist();
+    const raw = zIndexInput && zIndexInput.value;
+    updateSelectedZIndex(raw, { alertOnMissing: true });
+  });
+}
+
+if (zIndexInput) {
+  zIndexInput.addEventListener('change', () => {
+    const raw = zIndexInput.value;
+    updateSelectedZIndex(raw);
   });
 }
 
