@@ -162,9 +162,24 @@ body {
 }
 
 .input.color {
+  --swatch-color: #ffffff;
   padding: 0;
   width: 36px;
   height: 32px;
+  background: var(--swatch-color);
+  cursor: pointer;
+}
+.input.color::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 4px;
+}
+.input.color::-webkit-color-swatch {
+  border: none;
+  border-radius: 4px;
+}
+.input.color::-moz-color-swatch {
+  border: none;
+  border-radius: 4px;
 }
 
 .slider {

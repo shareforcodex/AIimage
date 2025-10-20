@@ -240,6 +240,12 @@ const textStyle = document.getElementById('textStyle');
 const addTextBtn = document.getElementById('addTextBtn');
 const drawMode = document.getElementById('drawMode');
 
+function updateColorSwatch(input) {
+  if (!input) return;
+  const val = input.value || '#ffffff';
+  input.style.setProperty('--swatch-color', val);
+}
+
 const history = new History(50);
 let isDrawing = false;
 let lastPoint = null;
@@ -1000,6 +1006,13 @@ function flip(horizontal, vertical) {
   objHistory.undo.push({ type: 'replace', before: beforeObjects, after: afterObjects });
   objHistory.redo.length = 0; updateUndoRedoState();
   persist();
+}
+
+if (brushColor) {
+  const updateBrushColorSwatch = () => updateColorSwatch(brushColor);
+  brushColor.addEventListener('input', updateBrushColorSwatch);
+  brushColor.addEventListener('change', updateBrushColorSwatch);
+  updateBrushColorSwatch();
 }
 
 // Brush toggle
@@ -2083,7 +2096,10 @@ function syncAddPanelFromSelection() {
   if (!sel || !sel.meta || sel.meta.type !== 'text') return;
   const m = sel.meta;
   if (textContent) textContent.value = m.text ?? '';
-  if (textColor && m.color) textColor.value = m.color;
+  if (textColor) {
+    if (m.color) textColor.value = m.color;
+    updateColorSwatch(textColor);
+  }
   if (textSize && m.size) { textSize.value = String(m.size); updateTextSizeLabel(); }
   if (textStyle) {
     const variant = m.variant || variantFromFlags(m);
@@ -2137,6 +2153,14 @@ function updateSelectedTextFromInputs() {
 
 // Live-update selected text when changing controls
 if (textContent) textContent.addEventListener('input', () => { updateSelectedTextFromInputs(); });
-if (textColor) textColor.addEventListener('change', () => { updateSelectedTextFromInputs(); });
+if (textColor) {
+  const applyTextColorFromInput = () => {
+    updateColorSwatch(textColor);
+    updateSelectedTextFromInputs();
+  };
+  textColor.addEventListener('input', applyTextColorFromInput);
+  textColor.addEventListener('change', applyTextColorFromInput);
+  updateColorSwatch(textColor);
+}
 if (textSize) textSize.addEventListener('change', () => { updateSelectedTextFromInputs(); });
 if (textStyle) textStyle.addEventListener('change', () => { updateSelectedTextFromInputs(); });
