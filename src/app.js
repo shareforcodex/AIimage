@@ -131,6 +131,7 @@ const doc = document.createElement('canvas');
 const dctx = doc.getContext('2d', { willReadFrequently: true });
 
 const fileInput = document.getElementById('fileInput');
+const pasteImageBtn = document.getElementById('pasteImageBtn');
 const presetSelect = document.getElementById('presetSelect');
 const customW = document.getElementById('customW');
 const customH = document.getElementById('customH');
@@ -542,6 +543,102 @@ function clampPosInt(n) {
   n = Math.round(Number(n) || 0);
   return Math.max(1, Math.min(4096, n));
 }
+
+async function addBlobAsImageObject(blob) {
+  if (!blob) return false;
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = (err) => reject(err);
+      image.src = url;
+    });
+    const tmp = document.createElement('canvas');
+    tmp.width = Math.max(1, img.width);
+    tmp.height = Math.max(1, img.height);
+    tmp.getContext('2d').drawImage(img, 0, 0);
+    const tl = viewport.canvasToImage({ x: 0, y: 0 });
+    objects.addImageBitmap(tmp, { x: Math.round(tl.x), y: Math.round(tl.y) });
+    render();
+    persist();
+    updateEditMenuRemoveState();
+    return true;
+  } catch (err) {
+    console.error('Failed to paste image blob', err);
+    return false;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function readImageBlobFromClipboard() {
+  if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') return null;
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const type = item.types.find((t) => t.startsWith('image/'));
+      if (!type) continue;
+      try {
+        const blob = await item.getType(type);
+        if (blob) return blob;
+      } catch (err) {
+        console.error('Failed to get clipboard image blob', err);
+      }
+    }
+  } catch (err) {
+    if (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) throw err;
+    console.error('Clipboard read failed', err);
+  }
+  return null;
+}
+
+function collectClipboardImageBlobs(data) {
+  const blobs = [];
+  if (!data) return blobs;
+  if (data.items) {
+    for (const item of Array.from(data.items)) {
+      if (item.kind === 'file' && item.type && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) blobs.push(file);
+      }
+    }
+  }
+  if (!blobs.length && data.files) {
+    for (const file of Array.from(data.files)) {
+      if (file.type && file.type.startsWith('image/')) blobs.push(file);
+    }
+  }
+  return blobs;
+}
+
+if (pasteImageBtn) {
+  pasteImageBtn.addEventListener('click', async () => {
+    try {
+      const blob = await readImageBlobFromClipboard();
+      if (!blob) {
+        alert('No image data found in the clipboard. Copy an image and try again (Ctrl/Cmd+V).');
+        return;
+      }
+      const added = await addBlobAsImageObject(blob);
+      if (!added) alert('Unable to paste image from the clipboard.');
+    } catch (err) {
+      console.error('Clipboard access denied', err);
+      alert('Clipboard access was denied. Please allow clipboard access or use Ctrl/Cmd+V after copying an image.');
+    }
+  });
+}
+
+window.addEventListener('paste', async (e) => {
+  try {
+    const blobs = collectClipboardImageBlobs(e.clipboardData);
+    if (!blobs.length) return;
+    e.preventDefault();
+    for (const blob of blobs) await addBlobAsImageObject(blob);
+  } catch (err) {
+    console.error('Pasting image from clipboard failed', err);
+  }
+});
 
 // Image loading
 fileInput.addEventListener('change', async (e) => {
